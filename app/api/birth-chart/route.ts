@@ -1,11 +1,13 @@
 import { randomUUID } from 'crypto';
 import { NextResponse } from 'next/server';
+import { generatePrashnaSnapshot } from '../../lib/astrology';
 
 type BirthChartRequest = {
   name: string;
   birthDate: string;
   birthTime: string;
   birthPlace: string;
+  direction?: string;
 };
 
 function jsonResponse(body: unknown, status: number, requestId: string) {
@@ -36,6 +38,13 @@ export async function POST(req: Request) {
       );
     }
 
+    const prashna = generatePrashnaSnapshot({
+      birthDate: payload.birthDate,
+      birthTime: payload.birthTime,
+      birthPlace: payload.birthPlace,
+      direction: payload.direction,
+    });
+
     const apiKey = process.env.DEEPSEEK_API_KEY;
     const model = process.env.DEEPSEEK_MODEL ?? 'deepseek-chat';
 
@@ -51,7 +60,43 @@ export async function POST(req: Request) {
       );
     }
 
-    const prompt = `Create a concise Vedic astrology summary for:\nName: ${payload.name || 'Unknown'}\nDate: ${payload.birthDate}\nTime: ${payload.birthTime}\nPlace: ${payload.birthPlace}\n\nInclude: Lagna guess, key strengths, cautions, and practical suggestions.`;
+    const prompt = `You are a Jyotish Prashna astrologer. Capture the soul of astrology with clear structured reasoning.
+
+Rule flow to follow strictly:
+1) Note Time, Date, Location, Direction faced (if given).
+2) Determine Lagna from the event moment.
+3) Judge Moon for emotional truth and urgency.
+4) Evaluate houses: 5/7/11 for love success and 6/8/12 for obstacles.
+5) Give significators-style read: support vs delay signals.
+6) Give practical timing window and next actions.
+
+Input:
+- Name: ${payload.name || 'Unknown'}
+- Date: ${payload.birthDate}
+- Time: ${payload.birthTime}
+- Location: ${payload.birthPlace}
+- Direction: ${payload.direction || 'Not provided'}
+
+Calculated prashna snapshot (ephemeris-style approximation):
+- Lagna sign: ${prashna.lagnaSign}
+- Lagna lord: ${prashna.lagnaLord}
+- Moon sign: ${prashna.moonSign}
+- Local sidereal time: ${prashna.localSiderealTime}
+- Ascendant longitude: ${prashna.rawAscendantDegrees}
+- Moon longitude: ${prashna.rawMoonDegrees}
+- Relevant houses: ${prashna.relevanceHouses.join(', ')}
+- Obstacle houses: ${prashna.obstacleHouses.join(', ')}
+- Method note: ${prashna.calculationNote}
+
+Output format:
+- Prashna Snapshot
+- Lagna Meaning
+- Moon Reading
+- House Analysis
+- Significators Verdict
+- Timing Window
+- Remedies / Practical Advice
+Keep it insightful, compassionate, and concise.`;
 
     const upstream = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
@@ -100,7 +145,7 @@ export async function POST(req: Request) {
     }
 
     const interpretation = data?.choices?.[0]?.message?.content ?? 'No interpretation returned.';
-    return jsonResponse({ ok: true, interpretation }, 200, requestId);
+    return jsonResponse({ ok: true, interpretation, prashna }, 200, requestId);
   } catch (error) {
     console.error('[birth-chart] unhandled', { requestId, error });
     return jsonResponse(

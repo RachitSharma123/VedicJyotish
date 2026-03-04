@@ -3,7 +3,19 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { ApiError, fetchJson } from './lib/fetch-json';
 
-type BirthChartResponse = { ok: true; interpretation: string };
+type PrashnaSnapshot = {
+  lagnaSign: string;
+  lagnaLord: string;
+  moonSign: string;
+  relevanceHouses: string[];
+  obstacleHouses: string[];
+  localSiderealTime: string;
+  rawAscendantDegrees: number;
+  rawMoonDegrees: number;
+  calculationNote: string;
+};
+
+type BirthChartResponse = { ok: true; interpretation: string; prashna: PrashnaSnapshot };
 
 export default function Page() {
   const [isDark, setIsDark] = useState(false);
@@ -11,7 +23,9 @@ export default function Page() {
   const [birthDate, setBirthDate] = useState('');
   const [birthTime, setBirthTime] = useState('');
   const [birthPlace, setBirthPlace] = useState('');
+  const [direction, setDirection] = useState('North');
   const [result, setResult] = useState('');
+  const [prashna, setPrashna] = useState<PrashnaSnapshot | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -40,12 +54,13 @@ export default function Page() {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, birthDate, birthTime, birthPlace }),
+          body: JSON.stringify({ name, birthDate, birthTime, birthPlace, direction }),
         },
         { retries: 2, timeoutMs: 12000 }
       );
 
       setResult(data.interpretation);
+      setPrashna(data.prashna);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(`${err.message}${err.requestId ? ` (requestId: ${err.requestId})` : ''}`);
@@ -60,7 +75,7 @@ export default function Page() {
   return (
     <main>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h1 style={{ margin: 0 }}>VedicJyotish</h1>
+        <h1 style={{ margin: 0 }}>VedicJyotish · Prashna Flow</h1>
         <button type="button" onClick={() => setIsDark((v) => !v)}>
           {isDark ? '☀️ Light' : '🌙 Dark'}
         </button>
@@ -72,15 +87,15 @@ export default function Page() {
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Optional" style={{ width: '100%' }} />
         </label>
         <label>
-          Birth date
+          Date
           <input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} style={{ width: '100%' }} />
         </label>
         <label>
-          Birth time
+          Time
           <input type="time" value={birthTime} onChange={(e) => setBirthTime(e.target.value)} style={{ width: '100%' }} />
         </label>
         <label>
-          Birth place
+          Location
           <input
             value={birthPlace}
             onChange={(e) => setBirthPlace(e.target.value)}
@@ -88,17 +103,46 @@ export default function Page() {
             style={{ width: '100%' }}
           />
         </label>
+        <label>
+          Direction faced
+          <select value={direction} onChange={(e) => setDirection(e.target.value)} style={{ width: '100%' }}>
+            <option>North</option>
+            <option>East</option>
+            <option>South</option>
+            <option>West</option>
+            <option>North-East</option>
+            <option>North-West</option>
+            <option>South-East</option>
+            <option>South-West</option>
+          </select>
+        </label>
 
         <button type="submit" disabled={!canSubmit || loading}>
-          {loading ? 'Generating…' : 'Generate Birth Chart Summary'}
+          {loading ? 'Running ephemeris…' : 'Generate Prashna Chart Reading'}
         </button>
 
         {error ? <p style={{ color: '#ef4444', margin: 0 }}>{error}</p> : null}
       </form>
 
-      <section className="card" style={{ marginTop: '1rem', whiteSpace: 'pre-wrap', minHeight: 140 }}>
-        {result || 'Your interpretation will appear here.'}
+      <section className="card" style={{ marginTop: '1rem', whiteSpace: 'pre-wrap', minHeight: 160 }}>
+        {result || 'Your prashna interpretation will appear here.'}
       </section>
+
+      {prashna ? (
+        <section className="card" style={{ marginTop: '1rem' }}>
+          <h3 style={{ marginTop: 0 }}>Calculated Prashna Snapshot</h3>
+          <ul style={{ marginBottom: 0 }}>
+            <li>Lagna: {prashna.lagnaSign} (lord: {prashna.lagnaLord})</li>
+            <li>Moon sign: {prashna.moonSign}</li>
+            <li>Local sidereal time: {prashna.localSiderealTime}</li>
+            <li>Ascendant longitude: {prashna.rawAscendantDegrees}°</li>
+            <li>Moon longitude: {prashna.rawMoonDegrees}°</li>
+            <li>Relevant houses: {prashna.relevanceHouses.join(', ')}</li>
+            <li>Obstacle houses: {prashna.obstacleHouses.join(', ')}</li>
+            <li>{prashna.calculationNote}</li>
+          </ul>
+        </section>
+      ) : null}
     </main>
   );
 }

@@ -21,3 +21,15 @@ A minimal Next.js app that generates a Vedic birth-chart style summary through a
 
 - Do **not** hardcode API keys in source.
 - Use `DEEPSEEK_MODEL` to switch to the latest model available in your DeepSeek account.
+
+
+## Streamlit option
+
+You can also run a Streamlit version of the same prashna workflow:
+
+1. `python -m venv .venv && source .venv/bin/activate`
+2. `pip install -r requirements-streamlit.txt`
+3. `export DEEPSEEK_API_KEY=...`
+4. `streamlit run streamlit_app.py`
+
+This includes time/date/location/direction capture, lagna + moon approximation, and DeepSeek reading generation.
