@@ -81,12 +81,12 @@ export default function Page() {
       setModels(data.models);
       setModel((current) => current || data.defaultModel || data.models[0] || '');
     } catch (err) {
+      setModels([]);
       if (err instanceof ApiError) {
         setError(`Model fetch failed: ${err.message}`);
       } else {
         setError('Unable to load models from provider.');
       }
-      setModels([]);
     } finally {
       setModelsLoading(false);
     }
@@ -128,116 +128,145 @@ export default function Page() {
 
   return (
     <main>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h1 style={{ margin: 0 }}>VedicJyotish · Prashna Flow</h1>
-        <button type="button" onClick={() => setIsDark((v) => !v)}>
+      <header className="hero">
+        <div>
+          <h1 className="title">🔮 VedicJyotish · Cosmic Prashna Console</h1>
+          <p className="subtitle">Modern interface, traditional logic: Lagna, Moon, houses, timing & remedies.</p>
+        </div>
+        <button className="btn btn-secondary" type="button" onClick={() => setIsDark((v) => !v)}>
           {isDark ? '☀️ Light' : '🌙 Dark'}
         </button>
-      </div>
+      </header>
 
-      <form className="card" onSubmit={onSubmit} style={{ display: 'grid', gap: '0.75rem' }}>
-        <h3 style={{ margin: 0 }}>AI Provider Access</h3>
-        <label>
-          Provider
-          <select value={provider} onChange={(e) => setProvider(e.target.value as AIProvider)} style={{ width: '100%' }}>
-            {Object.entries(PROVIDER_LABELS).map(([key, value]) => (
-              <option key={key} value={key}>
-                {value}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          API key (accepted on UI for this session)
-          <input
-            type="password"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder={`Paste ${PROVIDER_LABELS[provider]} key`}
-            style={{ width: '100%' }}
-          />
-        </label>
-
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'end' }}>
-          <label style={{ flex: 1 }}>
-            Model (live list from internet)
-            <select value={model} onChange={(e) => setModel(e.target.value)} style={{ width: '100%' }}>
-              <option value="">{modelsLoading ? 'Loading models…' : 'Select model'}</option>
-              {models.map((m) => (
-                <option key={m} value={m}>
-                  {m}
+      <div className="layout-grid">
+        <form className="card card-strong form-grid" onSubmit={onSubmit}>
+          <h3 className="section-title">AI Provider Access</h3>
+          <label>
+            Provider
+            <select value={provider} onChange={(e) => setProvider(e.target.value as AIProvider)}>
+              {Object.entries(PROVIDER_LABELS).map(([key, value]) => (
+                <option key={key} value={key}>
+                  {value}
                 </option>
               ))}
             </select>
           </label>
-          <button type="button" onClick={loadModels} disabled={modelsLoading}>
-            {modelsLoading ? 'Refreshing…' : 'Fetch Models'}
+
+          <label>
+            API key (session only)
+            <input
+              type="password"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder={`Paste ${PROVIDER_LABELS[provider]} key`}
+            />
+          </label>
+
+          <div className="row">
+            <label style={{ flex: 1 }}>
+              Model (live list)
+              <select value={model} onChange={(e) => setModel(e.target.value)}>
+                <option value="">{modelsLoading ? 'Loading models…' : 'Select model'}</option>
+                {models.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button className="btn btn-secondary" type="button" onClick={loadModels} disabled={modelsLoading}>
+              {modelsLoading ? 'Refreshing…' : 'Fetch Models'}
+            </button>
+          </div>
+
+          <hr />
+
+          <h3 className="section-title">Prashna Inputs</h3>
+          <label>
+            Name
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Optional" />
+          </label>
+          <div className="row" style={{ alignItems: 'stretch' }}>
+            <label style={{ flex: 1 }}>
+              Date
+              <input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
+            </label>
+            <label style={{ flex: 1 }}>
+              Time
+              <input type="time" value={birthTime} onChange={(e) => setBirthTime(e.target.value)} />
+            </label>
+          </div>
+
+          <label>
+            Location
+            <input value={birthPlace} onChange={(e) => setBirthPlace(e.target.value)} placeholder="City, Country" />
+          </label>
+
+          <label>
+            Direction faced
+            <select value={direction} onChange={(e) => setDirection(e.target.value)}>
+              <option>North</option>
+              <option>East</option>
+              <option>South</option>
+              <option>West</option>
+              <option>North-East</option>
+              <option>North-West</option>
+              <option>South-East</option>
+              <option>South-West</option>
+            </select>
+          </label>
+
+          <button className="btn" type="submit" disabled={!canSubmit || loading}>
+            {loading ? 'Running ephemeris…' : 'Generate Prashna Chart Reading'}
           </button>
+
+          {error ? <p className="error">{error}</p> : <p className="muted">Tip: fetch models first, then run chart.</p>}
+        </form>
+
+        <div className="form-grid">
+          <section className="card card-strong result">{result || 'Your prashna interpretation will appear here.'}</section>
+
+          {prashna ? (
+            <section className="card">
+              <h3 className="section-title">Calculated Prashna Snapshot</h3>
+              <div className="stat-grid">
+                <div className="stat">
+                  <div className="k">Lagna</div>
+                  <div className="v">
+                    {prashna.lagnaSign} · {prashna.lagnaLord}
+                  </div>
+                </div>
+                <div className="stat">
+                  <div className="k">Moon Sign</div>
+                  <div className="v">{prashna.moonSign}</div>
+                </div>
+                <div className="stat">
+                  <div className="k">Sidereal Time</div>
+                  <div className="v">{prashna.localSiderealTime}</div>
+                </div>
+                <div className="stat">
+                  <div className="k">Asc / Moon°</div>
+                  <div className="v">
+                    {prashna.rawAscendantDegrees}° / {prashna.rawMoonDegrees}°
+                  </div>
+                </div>
+                <div className="stat" style={{ gridColumn: '1 / -1' }}>
+                  <div className="k">Relevant Houses</div>
+                  <div className="v">{prashna.relevanceHouses.join(', ')}</div>
+                </div>
+                <div className="stat" style={{ gridColumn: '1 / -1' }}>
+                  <div className="k">Obstacle Houses</div>
+                  <div className="v">{prashna.obstacleHouses.join(', ')}</div>
+                </div>
+                <div className="stat" style={{ gridColumn: '1 / -1' }}>
+                  <div className="k">Calculation Note</div>
+                  <div className="v">{prashna.calculationNote}</div>
+                </div>
+              </div>
+            </section>
+          ) : null}
         </div>
-
-        <hr style={{ width: '100%', opacity: 0.4 }} />
-
-        <label>
-          Name
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Optional" style={{ width: '100%' }} />
-        </label>
-        <label>
-          Date
-          <input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} style={{ width: '100%' }} />
-        </label>
-        <label>
-          Time
-          <input type="time" value={birthTime} onChange={(e) => setBirthTime(e.target.value)} style={{ width: '100%' }} />
-        </label>
-        <label>
-          Location
-          <input
-            value={birthPlace}
-            onChange={(e) => setBirthPlace(e.target.value)}
-            placeholder="City, Country"
-            style={{ width: '100%' }}
-          />
-        </label>
-        <label>
-          Direction faced
-          <select value={direction} onChange={(e) => setDirection(e.target.value)} style={{ width: '100%' }}>
-            <option>North</option>
-            <option>East</option>
-            <option>South</option>
-            <option>West</option>
-            <option>North-East</option>
-            <option>North-West</option>
-            <option>South-East</option>
-            <option>South-West</option>
-          </select>
-        </label>
-
-        <button type="submit" disabled={!canSubmit || loading}>
-          {loading ? 'Running ephemeris…' : 'Generate Prashna Chart Reading'}
-        </button>
-
-        {error ? <p style={{ color: '#ef4444', margin: 0 }}>{error}</p> : null}
-      </form>
-
-      <section className="card" style={{ marginTop: '1rem', whiteSpace: 'pre-wrap', minHeight: 160 }}>
-        {result || 'Your prashna interpretation will appear here.'}
-      </section>
-
-      {prashna ? (
-        <section className="card" style={{ marginTop: '1rem' }}>
-          <h3 style={{ marginTop: 0 }}>Calculated Prashna Snapshot</h3>
-          <ul style={{ marginBottom: 0 }}>
-            <li>Lagna: {prashna.lagnaSign} (lord: {prashna.lagnaLord})</li>
-            <li>Moon sign: {prashna.moonSign}</li>
-            <li>Local sidereal time: {prashna.localSiderealTime}</li>
-            <li>Ascendant longitude: {prashna.rawAscendantDegrees}°</li>
-            <li>Moon longitude: {prashna.rawMoonDegrees}°</li>
-            <li>Relevant houses: {prashna.relevanceHouses.join(', ')}</li>
-            <li>Obstacle houses: {prashna.obstacleHouses.join(', ')}</li>
-            <li>{prashna.calculationNote}</li>
-          </ul>
-        </section>
-      ) : null}
+      </div>
     </main>
   );
 }
