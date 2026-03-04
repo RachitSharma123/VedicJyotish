@@ -44,3 +44,16 @@ The UI now accepts API keys per session and supports provider/model selection fo
 - Kimi (Moonshot)
 
 Use **Fetch Models** to pull live model IDs from provider APIs.
+
+
+## Avoiding merge conflicts on generated files
+
+If you were repeatedly seeing merge conflicts and not seeing latest changes clearly, the common culprit was `next-env.d.ts` churn between dev/build runs.
+
+This repo now configures a merge strategy for that generated file in `.gitattributes` so normal branch merges are smoother.
+
+Recommended workflow:
+1. `git fetch origin`
+2. `git pull --rebase`
+3. If you still have local generated-file noise: `git checkout -- next-env.d.ts`
+4. Re-run: `npm run dev`
