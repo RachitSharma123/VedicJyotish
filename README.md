@@ -33,3 +33,14 @@ You can also run a Streamlit version of the same prashna workflow:
 4. `streamlit run streamlit_app.py`
 
 This includes time/date/location/direction capture, lagna + moon approximation, and DeepSeek reading generation.
+
+
+## Provider support
+
+The UI now accepts API keys per session and supports provider/model selection for:
+- DeepSeek
+- OpenRouter
+- Z.ai (Zhipu)
+- Kimi (Moonshot)
+
+Use **Fetch Models** to pull live model IDs from provider APIs.

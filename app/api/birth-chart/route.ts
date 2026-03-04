@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { NextResponse } from 'next/server';
 import { generatePrashnaSnapshot } from '../../lib/astrology';
+import { type AIProvider, PROVIDERS } from '../../lib/providers';
 
 type BirthChartRequest = {
   name: string;
@@ -8,6 +9,9 @@ type BirthChartRequest = {
   birthTime: string;
   birthPlace: string;
   direction?: string;
+  provider?: AIProvider;
+  apiKey?: string;
+  model?: string;
 };
 
 function jsonResponse(body: unknown, status: number, requestId: string) {
@@ -38,6 +42,9 @@ export async function POST(req: Request) {
       );
     }
 
+    const provider: AIProvider = payload.provider && payload.provider in PROVIDERS ? payload.provider : 'deepseek';
+    const config = PROVIDERS[provider];
+
     const prashna = generatePrashnaSnapshot({
       birthDate: payload.birthDate,
       birthTime: payload.birthTime,
@@ -45,17 +52,18 @@ export async function POST(req: Request) {
       direction: payload.direction,
     });
 
-    const apiKey = process.env.DEEPSEEK_API_KEY;
-    const model = process.env.DEEPSEEK_MODEL ?? 'deepseek-chat';
+    const serverKey = config.keyEnv ? process.env[config.keyEnv] : undefined;
+    const apiKey = payload.apiKey || serverKey;
+    const model = payload.model || config.defaultModel;
 
     if (!apiKey) {
       return jsonResponse(
         {
           ok: false,
           code: 'MISSING_API_KEY',
-          message: 'DeepSeek API key is not configured on the server.',
+          message: `${config.label} API key is missing. Add it in UI or server env ${config.keyEnv}.`,
         },
-        500,
+        400,
         requestId
       );
     }
@@ -98,12 +106,19 @@ Output format:
 - Remedies / Practical Advice
 Keep it insightful, compassionate, and concise.`;
 
-    const upstream = await fetch('https://api.deepseek.com/chat/completions', {
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    };
+
+    if (provider === 'openrouter') {
+      headers['HTTP-Referer'] = 'https://vedicjyotish.local';
+      headers['X-Title'] = 'VedicJyotish';
+    }
+
+    const upstream = await fetch(config.chatUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
+      headers,
       body: JSON.stringify({
         model,
         messages: [
@@ -117,12 +132,17 @@ Keep it insightful, compassionate, and concise.`;
     const contentType = upstream.headers.get('content-type') ?? '';
     if (!contentType.toLowerCase().includes('application/json')) {
       const raw = await upstream.text();
-      console.error('[birth-chart] non-json upstream', { requestId, status: upstream.status, raw: raw.slice(0, 300) });
+      console.error('[birth-chart] non-json upstream', {
+        provider,
+        requestId,
+        status: upstream.status,
+        raw: raw.slice(0, 300),
+      });
       return jsonResponse(
         {
           ok: false,
           code: 'UPSTREAM_BAD_GATEWAY',
-          message: 'Unable to compute chart right now. Please try again in a moment.',
+          message: `${config.label} returned a non-JSON response. Please retry.`,
         },
         502,
         requestId
@@ -132,12 +152,12 @@ Keep it insightful, compassionate, and concise.`;
     const data = await upstream.json();
 
     if (!upstream.ok) {
-      console.error('[birth-chart] upstream error', { requestId, status: upstream.status, data });
+      console.error('[birth-chart] upstream error', { provider, requestId, status: upstream.status, data });
       return jsonResponse(
         {
           ok: false,
           code: 'UPSTREAM_ERROR',
-          message: data?.error?.message || 'Upstream request failed.',
+          message: data?.error?.message || data?.message || `${config.label} request failed.`,
         },
         upstream.status >= 500 ? 502 : 400,
         requestId
