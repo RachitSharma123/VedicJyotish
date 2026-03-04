@@ -9,6 +9,7 @@ type BirthChartRequest = {
   birthTime: string;
   birthPlace: string;
   direction?: string;
+  question?: string;
   provider?: AIProvider;
   apiKey?: string;
   model?: string;
@@ -30,12 +31,12 @@ export async function POST(req: Request) {
   try {
     const payload = (await req.json()) as Partial<BirthChartRequest>;
 
-    if (!payload?.birthDate || !payload?.birthTime || !payload?.birthPlace) {
+    if (!payload?.birthDate || !payload?.birthTime || !payload?.birthPlace || !payload?.question?.trim()) {
       return jsonResponse(
         {
           ok: false,
           code: 'INVALID_INPUT',
-          message: 'birthDate, birthTime, and birthPlace are required.',
+          message: 'birthDate, birthTime, birthPlace, and question are required.',
         },
         400,
         requestId
@@ -84,6 +85,7 @@ Input:
 - Time: ${payload.birthTime}
 - Location: ${payload.birthPlace}
 - Direction: ${payload.direction || 'Not provided'}
+- Question: ${payload.question}
 
 Calculated prashna snapshot (ephemeris-style approximation):
 - Lagna sign: ${prashna.lagnaSign}

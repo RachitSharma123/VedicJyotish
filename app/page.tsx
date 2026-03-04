@@ -34,6 +34,7 @@ export default function Page() {
   const [birthTime, setBirthTime] = useState('');
   const [birthPlace, setBirthPlace] = useState('');
   const [direction, setDirection] = useState('North');
+  const [question, setQuestion] = useState('');
 
   const [provider, setProvider] = useState<AIProvider>('deepseek');
   const [apiKey, setApiKey] = useState('');
@@ -59,8 +60,8 @@ export default function Page() {
   }, [isDark]);
 
   const canSubmit = useMemo(
-    () => !!birthDate && !!birthTime && !!birthPlace && !!provider && !!model,
-    [birthDate, birthTime, birthPlace, provider, model]
+    () => !!birthDate && !!birthTime && !!birthPlace && !!question.trim() && !!provider && !!model,
+    [birthDate, birthTime, birthPlace, question, provider, model]
   );
 
   async function loadModels() {
@@ -108,7 +109,7 @@ export default function Page() {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, birthDate, birthTime, birthPlace, direction, provider, apiKey, model }),
+          body: JSON.stringify({ name, birthDate, birthTime, birthPlace, direction, question, provider, apiKey, model }),
         },
         { retries: 2, timeoutMs: 20000 }
       );
@@ -215,6 +216,17 @@ export default function Page() {
               <option>South-West</option>
             </select>
           </label>
+
+          <label>
+            PrashnaKundali Question
+            <textarea
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              placeholder="Write your exact question (e.g., Will this relationship progress to marriage?)"
+              rows={4}
+            />
+          </label>
+          <p className="muted">You can edit any field above before submit — latest changes are accepted.</p>
 
           <button className="btn" type="submit" disabled={!canSubmit || loading}>
             {loading ? 'Running ephemeris…' : 'Generate Prashna Chart Reading'}
