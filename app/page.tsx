@@ -142,8 +142,8 @@ export default function Page() {
             <span className="pill">UI: {UI_VERSION}</span>
           </div>
         </div>
-        <button className="btn btn-secondary" type="button" onClick={() => setIsDark((v) => !v)}>
-          {isDark ? '☀️ Light' : '🌙 Dark'}
+        <button className="theme-switch" type="button" onClick={() => setIsDark((v) => !v)}>
+          <span>{isDark ? '🌞 Light Aura' : '🌙 Night Aura'}</span>
         </button>
       </header>
 

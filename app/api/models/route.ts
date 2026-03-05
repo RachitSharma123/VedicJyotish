@@ -63,8 +63,7 @@ export async function POST(req: Request) {
 
     const models = normalizeModelsPayload(data);
     return jsonResponse({ ok: true, models, defaultModel: config.defaultModel }, 200, requestId);
-  } catch (error) {
-    console.error('[models] error', { requestId, error });
+  } catch {
     return jsonResponse({ ok: false, message: 'Unable to fetch model list.' }, 500, requestId);
   }
 }

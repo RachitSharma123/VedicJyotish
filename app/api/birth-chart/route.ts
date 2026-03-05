@@ -134,12 +134,6 @@ Keep it insightful, compassionate, and concise.`;
     const contentType = upstream.headers.get('content-type') ?? '';
     if (!contentType.toLowerCase().includes('application/json')) {
       const raw = await upstream.text();
-      console.error('[birth-chart] non-json upstream', {
-        provider,
-        requestId,
-        status: upstream.status,
-        raw: raw.slice(0, 300),
-      });
       return jsonResponse(
         {
           ok: false,
@@ -154,7 +148,6 @@ Keep it insightful, compassionate, and concise.`;
     const data = await upstream.json();
 
     if (!upstream.ok) {
-      console.error('[birth-chart] upstream error', { provider, requestId, status: upstream.status, data });
       return jsonResponse(
         {
           ok: false,
@@ -168,8 +161,7 @@ Keep it insightful, compassionate, and concise.`;
 
     const interpretation = data?.choices?.[0]?.message?.content ?? 'No interpretation returned.';
     return jsonResponse({ ok: true, interpretation, prashna }, 200, requestId);
-  } catch (error) {
-    console.error('[birth-chart] unhandled', { requestId, error });
+  } catch {
     return jsonResponse(
       {
         ok: false,

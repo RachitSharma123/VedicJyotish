@@ -208,3 +208,15 @@ hr {
   background: color-mix(in oklab, var(--card-strong) 88%, transparent);
   color: var(--muted);
 }
+
+
+.theme-switch {
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: linear-gradient(130deg, color-mix(in oklab, var(--accent) 35%, transparent), color-mix(in oklab, var(--accent-2) 30%, transparent));
+  color: var(--fg);
+  padding: 0.7rem 1rem;
+  border-radius: 999px;
+  box-shadow: 0 8px 24px color-mix(in oklab, var(--accent) 28%, transparent);
+  font-weight: 600;
+}
