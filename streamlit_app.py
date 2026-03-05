@@ -133,6 +133,31 @@ def fetch_models(provider_name: str, api_key: str):
     return model_ids
 
 
+
+
+def build_conclusion(question: str, results: list[tuple[str, str, str]]) -> str:
+    if not results:
+        return 'No readings were generated.'
+
+    takeaway_lines = []
+    for provider_name, model, text in results:
+        first_line = ''
+        for line in text.splitlines():
+            cleaned = line.strip().lstrip('-').strip()
+            if cleaned:
+                first_line = cleaned
+                break
+        if not first_line:
+            first_line = 'Reading generated successfully.'
+        takeaway_lines.append(f'- **{provider_name} / {model}**: {first_line}')
+
+    question_line = question.strip() if question and question.strip() else 'General life guidance'
+    return (
+        f"**Question Focus:** {question_line}\n\n"
+        "### Key Takeaways\n"
+        + "\n".join(takeaway_lines)
+        + "\n\n**Overall Conclusion:** Look for common advice repeated across providers/models and act on the practical steps first."
+    )
 def get_reading(
     name: str,
     date_str: str,
@@ -140,6 +165,7 @@ def get_reading(
     place: str,
     direction: str,
     snapshot: dict,
+    question: str,
     provider_name: str,
     api_key: str,
     model: str,
@@ -165,6 +191,7 @@ Date: {date_str}
 Time: {time_str}
 Location: {place}
 Direction: {direction}
+Question: {question or 'General life guidance'}
 
 Calculated snapshot:
 Lagna: {snapshot['lagna_sign']} (lord: {snapshot['lagna_lord']})
@@ -334,6 +361,12 @@ with st.form('prashna_form'):
         time_val = st.time_input('Time')
         direction = st.selectbox('Direction faced', ['North', 'East', 'South', 'West', 'North-East', 'North-West', 'South-East', 'South-West'])
 
+    question = st.text_area(
+        'QUESTION WRITING AREA',
+        placeholder='Write your specific question here (career, relationship, money, health, timing, etc.)',
+        height=120,
+    )
+
     st.markdown('</div>', unsafe_allow_html=True)
     submitted = st.form_submit_button('Generate Prashna Chart Reading')
 
@@ -380,6 +413,7 @@ if submitted:
                     place,
                     direction,
                     snapshot,
+                    question,
                     provider_name,
                     api_key,
                     model,
@@ -387,6 +421,9 @@ if submitted:
                 results.append((provider_name, model, reading))
 
         st.success(f'Reading generated for {len(results)} provider/model combinations.')
+        st.subheader('Conclusion')
+        st.markdown(build_conclusion(question, results))
+
         tabs = st.tabs([f'{provider} • {model}' for provider, model, _ in results])
         for tab, (_, _, text) in zip(tabs, results):
             with tab:

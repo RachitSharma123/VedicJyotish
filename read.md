@@ -63,6 +63,8 @@ You should now see:
 - A badge `UI: streamlit-modern-v2`
 - A `Providers` multi-select in sidebar
 - Per-provider API key and model selectors
+- A **QUESTION WRITING AREA** box in the main form
+- A **Conclusion** section shown before per-model tabs
 - Tabs in output for each provider/model result
 
 ## Quick check command
