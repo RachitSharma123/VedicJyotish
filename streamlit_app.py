@@ -82,11 +82,11 @@ def build_snapshot(date_str: str, time_str: str, place: str):
     }
 
 
-def get_reading(name: str, date_str: str, time_str: str, place: str, direction: str, snapshot: dict):
-    api_key = os.getenv('DEEPSEEK_API_KEY')
-    model = os.getenv('DEEPSEEK_MODEL', 'deepseek-chat')
+def get_reading(name: str, date_str: str, time_str: str, place: str, direction: str, snapshot: dict, api_key: str, model: str):
+    api_key = (api_key or '').strip()
+    model = (model or '').strip() or 'deepseek-chat'
     if not api_key:
-        raise RuntimeError('Set DEEPSEEK_API_KEY before running Streamlit app.')
+        raise RuntimeError('Please add your DeepSeek API key in the sidebar (Session Setup).')
 
     prompt = f"""You are a Jyotish Prashna astrologer. Follow this flow:
 1) Time, Date, Location, Direction
@@ -188,10 +188,18 @@ st.markdown(
 
 with st.sidebar:
     st.header('⚙️ Session Setup')
-    st.caption('If values are missing, the app cannot generate a reading.')
-    model_name = os.getenv('DEEPSEEK_MODEL', 'deepseek-chat')
-    st.write(f'**Model:** `{model_name}`')
-    st.write(f"**API key:** {'✅ Detected' if os.getenv('DEEPSEEK_API_KEY') else '❌ Missing'}")
+    st.caption('Configure API access here. These values are used for this browser session.')
+
+    default_api_key = st.session_state.get('api_key', os.getenv('DEEPSEEK_API_KEY', ''))
+    api_key = st.text_input('DeepSeek API Key', value=default_api_key, type='password', placeholder='sk-...')
+    st.session_state['api_key'] = api_key
+
+    default_model = st.session_state.get('model_name', os.getenv('DEEPSEEK_MODEL', 'deepseek-chat'))
+    model_name = st.text_input('Model', value=default_model, placeholder='deepseek-chat')
+    st.session_state['model_name'] = model_name
+
+    st.write(f"**API key status:** {'✅ Added' if (api_key or '').strip() else '❌ Missing'}")
+    st.write(f"**Current model:** `{(model_name or '').strip() or 'deepseek-chat'}`")
     st.divider()
     st.caption('Tip: run with `streamlit run streamlit_app.py` and hard-refresh browser after code changes.')
 
@@ -227,7 +235,7 @@ if submitted:
             st.info('Houses considered: 5/7/11 support, 6/8/12 obstacles.')
 
         with st.spinner('Running calculations, ephemeris approximation, and chart generation...'):
-            reading = get_reading(name, date_val.isoformat(), time_val.strftime('%H:%M'), place, direction, snapshot)
+            reading = get_reading(name, date_val.isoformat(), time_val.strftime('%H:%M'), place, direction, snapshot, api_key, model_name)
 
         st.success('Reading generated successfully')
         st.subheader('Interpretation')

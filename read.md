@@ -26,6 +26,17 @@ export DEEPSEEK_API_KEY="your_key_here"
 export DEEPSEEK_MODEL="deepseek-chat"
 ```
 
+
+## 3.1) Add API key inside the app (new)
+
+Even if env vars are set, you can now paste your key directly in the sidebar:
+
+- Open `⚙️ Session Setup`
+- Fill `DeepSeek API Key`
+- (Optional) change `Model`
+
+The app shows `API key status: ✅ Added` when active.
+
 ## 4) Force-refresh and clear stale app state
 
 If UI still looks old:
