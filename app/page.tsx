@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { ApiError, fetchJson } from './lib/fetch-json';
 
-type AIProvider = 'deepseek' | 'openrouter' | 'kimi';
+type AIProvider = 'deepseek' | 'openrouter' | 'zai' | 'kimi';
 
 type PrashnaSnapshot = {
   lagnaSign: string;
@@ -23,6 +23,7 @@ type ModelsResponse = { ok: true; models: string[]; defaultModel: string };
 const PROVIDER_LABELS: Record<AIProvider, string> = {
   deepseek: 'DeepSeek',
   openrouter: 'OpenRouter',
+  zai: 'Z.ai (Zhipu)',
   kimi: 'Kimi (Moonshot)',
 };
 

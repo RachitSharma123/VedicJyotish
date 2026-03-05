@@ -40,6 +40,7 @@ This includes time/date/location/direction capture, lagna + moon approximation, 
 The UI now accepts API keys per session and supports provider/model selection for:
 - DeepSeek
 - OpenRouter
+- Z.ai (Zhipu)
 - Kimi (Moonshot)
 
 Use **Fetch Models** to pull live model IDs from provider APIs.

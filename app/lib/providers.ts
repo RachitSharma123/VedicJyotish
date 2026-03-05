@@ -1,4 +1,4 @@
-export type AIProvider = 'deepseek' | 'openrouter' | 'kimi';
+export type AIProvider = 'deepseek' | 'openrouter' | 'zai' | 'kimi';
 
 export type ProviderConfig = {
   label: string;
@@ -23,6 +23,13 @@ export const PROVIDERS: Record<AIProvider, ProviderConfig> = {
     chatUrl: 'https://openrouter.ai/api/v1/chat/completions',
     keyEnv: 'OPENROUTER_API_KEY',
     defaultModel: 'openai/gpt-4o-mini',
+  },
+  zai: {
+    label: 'Z.ai (Zhipu)',
+    modelsUrl: 'https://open.bigmodel.cn/api/paas/v4/models',
+    chatUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+    keyEnv: 'ZAI_API_KEY',
+    defaultModel: 'glm-4-plus',
   },
   kimi: {
     label: 'Kimi (Moonshot)',
