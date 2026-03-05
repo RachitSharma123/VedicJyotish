@@ -57,3 +57,17 @@ Recommended workflow:
 2. `git pull --rebase`
 3. If you still have local generated-file noise: `git checkout -- next-env.d.ts`
 4. Re-run: `npm run dev`
+
+
+## UI visibility checklist
+
+If you think UI changes are missing, verify you can see these items at the top of the page:
+- `API Provider Section` pill
+- `Question Area` pill
+- `Theme Toggle` pill
+- `UI: prashna-ui-v2` badge
+
+Then run:
+1. `rm -rf .next`
+2. `npm run dev`
+3. hard refresh browser (`Ctrl/Cmd + Shift + R`)

@@ -27,6 +27,8 @@ const PROVIDER_LABELS: Record<AIProvider, string> = {
   kimi: 'Kimi (Moonshot)',
 };
 
+const UI_VERSION = 'prashna-ui-v2';
+
 export default function Page() {
   const [isDark, setIsDark] = useState(false);
   const [name, setName] = useState('');
@@ -133,11 +135,24 @@ export default function Page() {
         <div>
           <h1 className="title">🔮 VedicJyotish · Cosmic Prashna Console</h1>
           <p className="subtitle">Modern interface, traditional logic: Lagna, Moon, houses, timing & remedies.</p>
+          <div className="pill-row" style={{ marginTop: '0.6rem' }}>
+            <span className="pill">✅ API Provider Section</span>
+            <span className="pill">✅ Question Area</span>
+            <span className="pill">✅ Theme Toggle</span>
+            <span className="pill">UI: {UI_VERSION}</span>
+          </div>
         </div>
         <button className="btn btn-secondary" type="button" onClick={() => setIsDark((v) => !v)}>
           {isDark ? '☀️ Light' : '🌙 Dark'}
         </button>
       </header>
+
+      <div className="card" style={{ marginBottom: '0.9rem' }}>
+        <p className="muted" style={{ margin: 0 }}>
+          If you still see old UI: hard refresh (Ctrl/Cmd + Shift + R), then restart dev server. This screen includes provider/API/model,
+          question area, and theme toggle.
+        </p>
+      </div>
 
       <div className="layout-grid">
         <form className="card card-strong form-grid" onSubmit={onSubmit}>

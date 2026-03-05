@@ -192,3 +192,19 @@ hr {
   border-top: 1px solid var(--border);
   margin: 0.35rem 0;
 }
+
+
+.pill-row {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.pill {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--card-strong) 88%, transparent);
+  color: var(--muted);
+}
