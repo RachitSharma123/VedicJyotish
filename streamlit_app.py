@@ -19,6 +19,37 @@ CITY_COORDS = {
     'london': (51.5072, -0.1276), 'newyork': (40.7128, -74.0060), 'sydney': (-33.8688, 151.2093)
 }
 
+PROVIDERS = {
+    'DeepSeek': {
+        'base_url': 'https://api.deepseek.com',
+        'chat_path': '/chat/completions',
+        'models_path': '/models',
+        'env_key': 'DEEPSEEK_API_KEY',
+        'default_models': ['deepseek-chat', 'deepseek-reasoner'],
+    },
+    'OpenRouter': {
+        'base_url': 'https://openrouter.ai/api/v1',
+        'chat_path': '/chat/completions',
+        'models_path': '/models',
+        'env_key': 'OPENROUTER_API_KEY',
+        'default_models': ['deepseek/deepseek-chat-v3-0324:free', 'openai/gpt-4o-mini'],
+    },
+    'Z.ai (Zhipu)': {
+        'base_url': 'https://open.bigmodel.cn/api/paas/v4',
+        'chat_path': '/chat/completions',
+        'models_path': '/models',
+        'env_key': 'ZAI_API_KEY',
+        'default_models': ['glm-4-plus', 'glm-4-air'],
+    },
+    'Kimi (Moonshot)': {
+        'base_url': 'https://api.moonshot.cn/v1',
+        'chat_path': '/chat/completions',
+        'models_path': '/models',
+        'env_key': 'KIMI_API_KEY',
+        'default_models': ['moonshot-v1-8k', 'moonshot-v1-32k'],
+    },
+}
+
 
 def normalize_degrees(deg: float) -> float:
     return ((deg % 360) + 360) % 360
@@ -82,11 +113,43 @@ def build_snapshot(date_str: str, time_str: str, place: str):
     }
 
 
-def get_reading(name: str, date_str: str, time_str: str, place: str, direction: str, snapshot: dict, api_key: str, model: str):
+def fetch_models(provider_name: str, api_key: str):
+    cfg = PROVIDERS[provider_name]
+    url = f"{cfg['base_url']}{cfg['models_path']}"
+    headers = {'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}
+    if provider_name == 'OpenRouter':
+        headers['HTTP-Referer'] = 'http://localhost'
+        headers['X-Title'] = 'VedicJyotish Streamlit'
+
+    res = requests.get(url, headers=headers, timeout=15)
+    res.raise_for_status()
+    data = res.json()
+
+    items = data.get('data', []) if isinstance(data, dict) else []
+    model_ids = []
+    for item in items:
+        if isinstance(item, dict) and item.get('id'):
+            model_ids.append(item['id'])
+    return model_ids
+
+
+def get_reading(
+    name: str,
+    date_str: str,
+    time_str: str,
+    place: str,
+    direction: str,
+    snapshot: dict,
+    provider_name: str,
+    api_key: str,
+    model: str,
+):
     api_key = (api_key or '').strip()
-    model = (model or '').strip() or 'deepseek-chat'
+    model = (model or '').strip()
     if not api_key:
-        raise RuntimeError('Please add your DeepSeek API key in the sidebar (Session Setup).')
+        raise RuntimeError(f'Please add API key for {provider_name} in the sidebar (Session Setup).')
+    if not model:
+        raise RuntimeError(f'Please select at least one model for {provider_name}.')
 
     prompt = f"""You are a Jyotish Prashna astrologer. Follow this flow:
 1) Time, Date, Location, Direction
@@ -112,22 +175,37 @@ Moon longitude: {snapshot['moon_deg']}
 
 Keep answer concise, compassionate, and practical."""
 
-    res = requests.post(
-        'https://api.deepseek.com/chat/completions',
-        headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'},
-        json={
-            'model': model,
-            'messages': [
-                {'role': 'system', 'content': 'You are an expert Vedic astrology assistant.'},
-                {'role': 'user', 'content': prompt},
-            ],
-            'temperature': 0.5,
-        },
-        timeout=30,
-    )
-    res.raise_for_status()
-    data = res.json()
-    return data['choices'][0]['message']['content']
+    cfg = PROVIDERS[provider_name]
+    url = f"{cfg['base_url']}{cfg['chat_path']}"
+    headers = {'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}
+    if provider_name == 'OpenRouter':
+        headers['HTTP-Referer'] = 'http://localhost'
+        headers['X-Title'] = 'VedicJyotish Streamlit'
+
+    try:
+        res = requests.post(
+            url,
+            headers=headers,
+            json={
+                'model': model,
+                'messages': [
+                    {'role': 'system', 'content': 'You are an expert Vedic astrology assistant.'},
+                    {'role': 'user', 'content': prompt},
+                ],
+                'temperature': 0.5,
+            },
+            timeout=45,
+        )
+        res.raise_for_status()
+        data = res.json()
+        return data['choices'][0]['message']['content']
+    except requests.exceptions.Timeout as exc:
+        raise RuntimeError(
+            f'{provider_name} timed out while generating reading for model `{model}`. '
+            'Please retry, switch model/provider, or check network stability.'
+        ) from exc
+    except requests.exceptions.RequestException as exc:
+        raise RuntimeError(f'{provider_name} request failed for model `{model}`: {exc}') from exc
 
 
 st.set_page_config(page_title='VedicJyotish Streamlit', page_icon='🔮', layout='centered')
@@ -139,7 +217,7 @@ st.markdown(
         background: radial-gradient(circle at top right, #1d2a6b 0%, #0f172a 40%, #020617 100%);
       }
       .block-container {
-        max-width: 900px;
+        max-width: 1000px;
         padding-top: 2rem;
         padding-bottom: 2rem;
       }
@@ -151,23 +229,11 @@ st.markdown(
         margin-bottom: 1.1rem;
         backdrop-filter: blur(8px);
       }
-      .vj-hero h1 {
-        margin: 0;
-        color: #e2e8f0;
-        font-size: 1.7rem;
-      }
-      .vj-hero p {
-        margin: 0.35rem 0 0;
-        color: #cbd5e1;
-      }
+      .vj-hero h1 { margin: 0; color: #e2e8f0; font-size: 1.7rem; }
+      .vj-hero p { margin: 0.35rem 0 0; color: #cbd5e1; }
       .vj-chip {
-        display: inline-block;
-        margin-top: 0.7rem;
-        padding: 0.2rem 0.55rem;
-        border-radius: 999px;
-        font-size: 0.76rem;
-        color: #dbeafe;
-        background: rgba(30, 64, 175, 0.42);
+        display: inline-block; margin-top: 0.7rem; padding: 0.2rem 0.55rem; border-radius: 999px;
+        font-size: 0.76rem; color: #dbeafe; background: rgba(30, 64, 175, 0.42);
         border: 1px solid rgba(96, 165, 250, 0.55);
       }
       .vj-card {
@@ -179,8 +245,8 @@ st.markdown(
     </style>
     <div class="vj-hero">
       <h1>🔮 VedicJyotish — Prashna Reading</h1>
-      <p>Fast lagna + moon approximation with a practical DeepSeek interpretation.</p>
-      <span class="vj-chip">UI: streamlit-modern-v1</span>
+      <p>Multi-provider + multi-model Jyotish reading with practical guidance.</p>
+      <span class="vj-chip">UI: streamlit-modern-v2</span>
     </div>
     """,
     unsafe_allow_html=True,
@@ -188,20 +254,74 @@ st.markdown(
 
 with st.sidebar:
     st.header('⚙️ Session Setup')
-    st.caption('Configure API access here. These values are used for this browser session.')
+    st.caption('Choose one or more providers and models. Keys are stored only in this session.')
 
-    default_api_key = st.session_state.get('api_key', os.getenv('DEEPSEEK_API_KEY', ''))
-    api_key = st.text_input('DeepSeek API Key', value=default_api_key, type='password', placeholder='sk-...')
-    st.session_state['api_key'] = api_key
+    selected_providers = st.multiselect(
+        'Providers',
+        options=list(PROVIDERS.keys()),
+        default=st.session_state.get('selected_providers', ['DeepSeek']),
+    )
+    st.session_state['selected_providers'] = selected_providers
 
-    default_model = st.session_state.get('model_name', os.getenv('DEEPSEEK_MODEL', 'deepseek-chat'))
-    model_name = st.text_input('Model', value=default_model, placeholder='deepseek-chat')
-    st.session_state['model_name'] = model_name
+    provider_configs = {}
+    for provider_name in selected_providers:
+        cfg = PROVIDERS[provider_name]
+        with st.expander(provider_name, expanded=True):
+            api_key_state_key = f"api_key_{provider_name}"
+            model_state_key = f"models_{provider_name}"
 
-    st.write(f"**API key status:** {'✅ Added' if (api_key or '').strip() else '❌ Missing'}")
-    st.write(f"**Current model:** `{(model_name or '').strip() or 'deepseek-chat'}`")
+            default_api_key = st.session_state.get(api_key_state_key, os.getenv(cfg['env_key'], ''))
+            api_key = st.text_input(
+                f'{provider_name} API Key',
+                value=default_api_key,
+                type='password',
+                placeholder='Paste API key',
+                key=f'input_{api_key_state_key}',
+            )
+            st.session_state[api_key_state_key] = api_key
+
+            model_options = st.session_state.get(f'available_{provider_name}', cfg['default_models'])
+            selected_models = st.multiselect(
+                f'{provider_name} Models',
+                options=model_options,
+                default=st.session_state.get(model_state_key, cfg['default_models'][:1]),
+                key=f'pick_{model_state_key}',
+            )
+            custom_model = st.text_input(
+                f'{provider_name} Custom model (optional)',
+                value='',
+                placeholder='Type model id and press Enter',
+                key=f'custom_{provider_name}',
+            ).strip()
+            if custom_model and custom_model not in selected_models:
+                selected_models = selected_models + [custom_model]
+
+            fetch_clicked = st.button(f'Fetch {provider_name} models', key=f'fetch_{provider_name}')
+            if fetch_clicked:
+                try:
+                    if not (api_key or '').strip():
+                        st.warning(f'Add API key for {provider_name} before fetching models.')
+                    else:
+                        fetched = fetch_models(provider_name, api_key)
+                        if fetched:
+                            st.session_state[f'available_{provider_name}'] = fetched
+                            st.success(f'Fetched {len(fetched)} models for {provider_name}.')
+                        else:
+                            st.warning(f'No models returned from {provider_name}.')
+                except Exception as fetch_err:
+                    st.warning(f'Could not fetch models for {provider_name}: {fetch_err}')
+
+            st.session_state[model_state_key] = selected_models
+            st.write(f"API key status: {'✅ Added' if (api_key or '').strip() else '❌ Missing'}")
+            st.write(f'Models selected: {len(selected_models)}')
+
+            provider_configs[provider_name] = {
+                'api_key': api_key,
+                'models': selected_models,
+            }
+
     st.divider()
-    st.caption('Tip: run with `streamlit run streamlit_app.py` and hard-refresh browser after code changes.')
+    st.caption('If requests timeout, try another provider/model combination.')
 
 with st.form('prashna_form'):
     st.markdown('<div class="vj-card">', unsafe_allow_html=True)
@@ -219,6 +339,9 @@ with st.form('prashna_form'):
 
 if submitted:
     try:
+        if not selected_providers:
+            raise RuntimeError('Please select at least one provider in the sidebar.')
+
         snapshot = build_snapshot(date_val.isoformat(), time_val.strftime('%H:%M'), place)
         st.subheader('Calculated Prashna Snapshot')
         m1, m2, m3 = st.columns(3)
@@ -234,11 +357,40 @@ if submitted:
             st.json(snapshot)
             st.info('Houses considered: 5/7/11 support, 6/8/12 obstacles.')
 
-        with st.spinner('Running calculations, ephemeris approximation, and chart generation...'):
-            reading = get_reading(name, date_val.isoformat(), time_val.strftime('%H:%M'), place, direction, snapshot, api_key, model_name)
+        jobs = []
+        for provider_name in selected_providers:
+            cfg = provider_configs.get(provider_name, {})
+            api_key = cfg.get('api_key', '')
+            models = cfg.get('models', [])
+            if not models:
+                raise RuntimeError(f'Please select at least one model for {provider_name}.')
+            for model in models:
+                jobs.append((provider_name, api_key, model))
 
-        st.success('Reading generated successfully')
-        st.subheader('Interpretation')
-        st.markdown(reading)
+        if len(jobs) > 8:
+            st.warning('You selected many provider/model combinations; this may take longer and hit rate limits.')
+
+        results = []
+        with st.spinner('Generating readings across selected providers/models...'):
+            for provider_name, api_key, model in jobs:
+                reading = get_reading(
+                    name,
+                    date_val.isoformat(),
+                    time_val.strftime('%H:%M'),
+                    place,
+                    direction,
+                    snapshot,
+                    provider_name,
+                    api_key,
+                    model,
+                )
+                results.append((provider_name, model, reading))
+
+        st.success(f'Reading generated for {len(results)} provider/model combinations.')
+        tabs = st.tabs([f'{provider} • {model}' for provider, model, _ in results])
+        for tab, (_, _, text) in zip(tabs, results):
+            with tab:
+                st.subheader('Interpretation')
+                st.markdown(text)
     except Exception as err:
         st.error(str(err))

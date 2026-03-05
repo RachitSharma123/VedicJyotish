@@ -18,26 +18,36 @@ source .venv/bin/activate
 pip install -r requirements-streamlit.txt
 ```
 
-## 3) Set DeepSeek API key
+## 3) API keys + providers + models (new)
 
-```bash
-export DEEPSEEK_API_KEY="your_key_here"
-# optional model override
-export DEEPSEEK_MODEL="deepseek-chat"
-```
+In `⚙️ Session Setup` (left sidebar), you can now select:
 
+- **Multiple providers** at once:
+  - DeepSeek
+  - OpenRouter
+  - Z.ai (Zhipu)
+  - Kimi (Moonshot)
+- **Multiple models** for each selected provider
+- **Provider-specific API keys**
 
-## 3.1) Add API key inside the app (new)
+You can also click **Fetch <provider> models** to try loading model IDs from that provider API.
 
-Even if env vars are set, you can now paste your key directly in the sidebar:
+## 4) Timeout error help
 
-- Open `⚙️ Session Setup`
-- Fill `DeepSeek API Key`
-- (Optional) change `Model`
+If you see errors like:
 
-The app shows `API key status: ✅ Added` when active.
+`HTTPSConnectionPool(host='api.deepseek.com', port=443): Read timed out.`
 
-## 4) Force-refresh and clear stale app state
+Try this:
+
+1. Re-run with fewer provider/model combinations.
+2. Switch to another model/provider in sidebar.
+3. Retry after a short delay (provider might be rate-limited/busy).
+4. Check your network/proxy/VPN.
+
+The app now returns a friendlier timeout message telling you which provider/model timed out.
+
+## 5) Force-refresh and clear stale app state
 
 If UI still looks old:
 
@@ -46,21 +56,14 @@ If UI still looks old:
 3. In browser, hard refresh (`Ctrl+Shift+R` or `Cmd+Shift+R`).
 4. If needed, open in an incognito window.
 
-## 5) Confirm you are seeing the new UI
+## 6) Confirm you are seeing the new UI
 
 You should now see:
 
-- A glass-style hero block with title "🔮 VedicJyotish — Prashna Reading"
-- A badge `UI: streamlit-modern-v1`
-- A sidebar section named `⚙️ Session Setup`
-- Snapshot metrics cards (Lagna, Lagna Lord, Moon Sign, etc.)
-
-## 6) Common reason changes don't appear
-
-- Running a different file than `streamlit_app.py`
-- Multiple Streamlit processes using different ports
-- Browser caching old frontend assets
-- Editing one Python environment and running another
+- A badge `UI: streamlit-modern-v2`
+- A `Providers` multi-select in sidebar
+- Per-provider API key and model selectors
+- Tabs in output for each provider/model result
 
 ## Quick check command
 
