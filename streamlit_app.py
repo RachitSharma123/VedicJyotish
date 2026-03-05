@@ -131,28 +131,106 @@ Keep answer concise, compassionate, and practical."""
 
 
 st.set_page_config(page_title='VedicJyotish Streamlit', page_icon='🔮', layout='centered')
-st.title('🔮 VedicJyotish — Prashna Reading (Streamlit)')
-st.caption('Main calculations: ephemeris-style approximation + DeepSeek interpretation.')
+
+st.markdown(
+    """
+    <style>
+      .stApp {
+        background: radial-gradient(circle at top right, #1d2a6b 0%, #0f172a 40%, #020617 100%);
+      }
+      .block-container {
+        max-width: 900px;
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+      }
+      .vj-hero {
+        background: rgba(15, 23, 42, 0.68);
+        border: 1px solid rgba(148, 163, 184, 0.3);
+        border-radius: 16px;
+        padding: 1.2rem 1.4rem;
+        margin-bottom: 1.1rem;
+        backdrop-filter: blur(8px);
+      }
+      .vj-hero h1 {
+        margin: 0;
+        color: #e2e8f0;
+        font-size: 1.7rem;
+      }
+      .vj-hero p {
+        margin: 0.35rem 0 0;
+        color: #cbd5e1;
+      }
+      .vj-chip {
+        display: inline-block;
+        margin-top: 0.7rem;
+        padding: 0.2rem 0.55rem;
+        border-radius: 999px;
+        font-size: 0.76rem;
+        color: #dbeafe;
+        background: rgba(30, 64, 175, 0.42);
+        border: 1px solid rgba(96, 165, 250, 0.55);
+      }
+      .vj-card {
+        border: 1px solid rgba(148, 163, 184, 0.24);
+        background: rgba(15, 23, 42, 0.56);
+        border-radius: 14px;
+        padding: 0.9rem;
+      }
+    </style>
+    <div class="vj-hero">
+      <h1>🔮 VedicJyotish — Prashna Reading</h1>
+      <p>Fast lagna + moon approximation with a practical DeepSeek interpretation.</p>
+      <span class="vj-chip">UI: streamlit-modern-v1</span>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+with st.sidebar:
+    st.header('⚙️ Session Setup')
+    st.caption('If values are missing, the app cannot generate a reading.')
+    model_name = os.getenv('DEEPSEEK_MODEL', 'deepseek-chat')
+    st.write(f'**Model:** `{model_name}`')
+    st.write(f"**API key:** {'✅ Detected' if os.getenv('DEEPSEEK_API_KEY') else '❌ Missing'}")
+    st.divider()
+    st.caption('Tip: run with `streamlit run streamlit_app.py` and hard-refresh browser after code changes.')
 
 with st.form('prashna_form'):
-    name = st.text_input('Name (optional)')
-    date_val = st.date_input('Date')
-    time_val = st.time_input('Time')
-    place = st.text_input('Location', placeholder='Melbourne')
-    direction = st.selectbox('Direction faced', ['North', 'East', 'South', 'West', 'North-East', 'North-West', 'South-East', 'South-West'])
+    st.markdown('<div class="vj-card">', unsafe_allow_html=True)
+    c1, c2 = st.columns(2)
+    with c1:
+        name = st.text_input('Name (optional)', placeholder='Your name')
+        date_val = st.date_input('Date')
+        place = st.text_input('Location', placeholder='Melbourne')
+    with c2:
+        time_val = st.time_input('Time')
+        direction = st.selectbox('Direction faced', ['North', 'East', 'South', 'West', 'North-East', 'North-West', 'South-East', 'South-West'])
+
+    st.markdown('</div>', unsafe_allow_html=True)
     submitted = st.form_submit_button('Generate Prashna Chart Reading')
 
 if submitted:
     try:
         snapshot = build_snapshot(date_val.isoformat(), time_val.strftime('%H:%M'), place)
-        with st.expander('Calculated Prashna Snapshot', expanded=True):
-            st.write(snapshot)
-            st.write('Houses considered: 5/7/11 support, 6/8/12 obstacles.')
+        st.subheader('Calculated Prashna Snapshot')
+        m1, m2, m3 = st.columns(3)
+        m1.metric('Lagna', snapshot['lagna_sign'])
+        m2.metric('Lagna Lord', snapshot['lagna_lord'])
+        m3.metric('Moon Sign', snapshot['moon_sign'])
+        m4, m5, m6 = st.columns(3)
+        m4.metric('LST', snapshot['lst'])
+        m5.metric('Asc Longitude', f"{snapshot['asc_deg']}°")
+        m6.metric('Moon Longitude', f"{snapshot['moon_deg']}°")
+
+        with st.expander('Technical details', expanded=False):
+            st.json(snapshot)
+            st.info('Houses considered: 5/7/11 support, 6/8/12 obstacles.')
 
         with st.spinner('Running calculations, ephemeris approximation, and chart generation...'):
             reading = get_reading(name, date_val.isoformat(), time_val.strftime('%H:%M'), place, direction, snapshot)
 
         st.success('Reading generated successfully')
+        st.subheader('Interpretation')
         st.markdown(reading)
     except Exception as err:
         st.error(str(err))
