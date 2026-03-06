@@ -173,7 +173,7 @@ def get_reading(
     api_key = (api_key or '').strip()
     model = (model or '').strip()
     if not api_key:
-        raise RuntimeError(f'Please add API key for {provider_name} in the sidebar (Session Setup).')
+        raise RuntimeError(f'Please add API key for {provider_name} in global 🔑 API setup.')
     if not model:
         raise RuntimeError(f'Please select at least one model for {provider_name}.')
 
@@ -281,76 +281,19 @@ def render_prashna_app(show_page_config: bool = True):
         unsafe_allow_html=True,
     )
 
-    with st.sidebar:
-        st.header('⚙️ Session Setup')
-        st.caption('Choose one or more providers and models. Keys are stored only in this session.')
+    selected_providers = st.session_state.get('selected_providers', [])
+    provider_configs = {}
+    for provider_name in selected_providers:
+        provider_configs[provider_name] = {
+            'api_key': st.session_state.get(f'api_key_{provider_name}', ''),
+            'models': st.session_state.get(f'models_{provider_name}', []),
+        }
 
-        selected_providers = st.multiselect(
-            'Providers',
-            options=list(PROVIDERS.keys()),
-            default=st.session_state.get('selected_providers', ['DeepSeek']),
-        )
-        st.session_state['selected_providers'] = selected_providers
+    if selected_providers:
+        st.caption('Global API setup loaded from the 🔑 API button above.')
+    else:
+        st.warning('No provider configured. Click 🔑 API button above, add key/model, then verify.')
 
-        provider_configs = {}
-        for provider_name in selected_providers:
-            cfg = PROVIDERS[provider_name]
-            with st.expander(provider_name, expanded=True):
-                api_key_state_key = f"api_key_{provider_name}"
-                model_state_key = f"models_{provider_name}"
-
-                default_api_key = st.session_state.get(api_key_state_key, os.getenv(cfg['env_key'], ''))
-                api_key = st.text_input(
-                    f'{provider_name} API Key',
-                    value=default_api_key,
-                    type='password',
-                    placeholder='Paste API key',
-                    key=f'input_{api_key_state_key}',
-                )
-                st.session_state[api_key_state_key] = api_key
-
-                model_options = st.session_state.get(f'available_{provider_name}', cfg['default_models'])
-                selected_models = st.multiselect(
-                    f'{provider_name} Models',
-                    options=model_options,
-                    default=st.session_state.get(model_state_key, cfg['default_models'][:1]),
-                    key=f'pick_{model_state_key}',
-                )
-                custom_model = st.text_input(
-                    f'{provider_name} Custom model (optional)',
-                    value='',
-                    placeholder='Type model id and press Enter',
-                    key=f'custom_{provider_name}',
-                ).strip()
-                if custom_model and custom_model not in selected_models:
-                    selected_models = selected_models + [custom_model]
-
-                fetch_clicked = st.button(f'Fetch {provider_name} models', key=f'fetch_{provider_name}')
-                if fetch_clicked:
-                    try:
-                        if not (api_key or '').strip():
-                            st.warning(f'Add API key for {provider_name} before fetching models.')
-                        else:
-                            fetched = fetch_models(provider_name, api_key)
-                            if fetched:
-                                st.session_state[f'available_{provider_name}'] = fetched
-                                st.success(f'Fetched {len(fetched)} models for {provider_name}.')
-                            else:
-                                st.warning(f'No models returned from {provider_name}.')
-                    except Exception as fetch_err:
-                        st.warning(f'Could not fetch models for {provider_name}: {fetch_err}')
-
-                st.session_state[model_state_key] = selected_models
-                st.write(f"API key status: {'✅ Added' if (api_key or '').strip() else '❌ Missing'}")
-                st.write(f'Models selected: {len(selected_models)}')
-
-                provider_configs[provider_name] = {
-                    'api_key': api_key,
-                    'models': selected_models,
-                }
-
-        st.divider()
-        st.caption('If requests timeout, try another provider/model combination.')
 
     with st.form('prashna_form'):
         st.markdown('<div class="vj-card">', unsafe_allow_html=True)
@@ -375,7 +318,7 @@ def render_prashna_app(show_page_config: bool = True):
     if submitted:
         try:
             if not selected_providers:
-                raise RuntimeError('Please select at least one provider in the sidebar.')
+                raise RuntimeError('Please select at least one provider from the global 🔑 API setup.')
 
             snapshot = build_snapshot(date_val.isoformat(), time_val.strftime('%H:%M'), place)
             st.subheader('Calculated Prashna Snapshot')
@@ -436,4 +379,12 @@ def render_prashna_app(show_page_config: bool = True):
 
 
 if __name__ == '__main__':
-    render_prashna_app(show_page_config=True)
+    from streamlit_janma_tab import render_janma_kundali_tab
+
+    st.set_page_config(page_title='VedicJyotish Hub', page_icon='🕉️', layout='wide')
+    mode = st.radio('Module', ['Prashna Reading', 'Janma Kundali'], horizontal=True)
+
+    if mode == 'Prashna Reading':
+        render_prashna_app(show_page_config=False)
+    else:
+        render_janma_kundali_tab(show_page_config=False)
