@@ -1,6 +1,6 @@
-import time
-
 import streamlit as st
+
+from janma_requirements import get_glossary_terms
 
 
 def run_hub():
@@ -15,10 +15,13 @@ def run_hub():
     if 'selected_providers' not in st.session_state:
         st.session_state['selected_providers'] = ['DeepSeek']
 
+    if 'show_glossary_page' not in st.session_state:
+        st.session_state['show_glossary_page'] = False
+
     st.markdown(
         """
         <style>
-          .st-key-info_btn button, .st-key-api_btn button {
+          .st-key-api_btn button {
             width: 100%;
             min-height: 3rem;
             border-radius: 12px;
@@ -27,7 +30,7 @@ def run_hub():
             border: 1px solid rgba(148,163,184,.65);
             background: rgba(15,23,42,.78);
           }
-          .st-key-info_btn button:hover, .st-key-api_btn button:hover {
+          .st-key-api_btn button:hover {
             border-color: rgba(226,232,240,.95);
             background: rgba(30,41,59,.95);
           }
@@ -50,35 +53,6 @@ def run_hub():
     )
 
     st.caption('UI Build: streamlit-hub-v3')
-
-    def render_global_info_popover():
-        if st.button('ℹ️', key='info_btn', help='Glossary for Sanskrit/Hindi terms', use_container_width=True):
-            st.session_state['show_glossary'] = not st.session_state.get('show_glossary', False)
-            if st.session_state['show_glossary']:
-                st.session_state['glossary_opened_at'] = time.time()
-
-        opened_at = st.session_state.get('glossary_opened_at')
-        if st.session_state.get('show_glossary', False) and opened_at and (time.time() - opened_at > 20):
-            st.session_state['show_glossary'] = False
-
-        if st.session_state.get('show_glossary', False):
-            st.markdown(
-                """
-                <div class="info-pop">
-                  <h4>Glossary for non-English users (auto-hides after ~20s)</h4>
-                  <ul>
-                    <li><b>Janma Kundali</b>: Birth chart (जन्म कुंडली).</li>
-                    <li><b>Lagna</b>: Ascendant sign at birth time (लग्न).</li>
-                    <li><b>Nakshatra</b>: Lunar mansion (नक्षत्र).</li>
-                    <li><b>Panchanga</b>: Tithi, Vara, Nakshatra, Yoga, Karana framework (पंचांग).</li>
-                    <li><b>Vimshottari Dasha</b>: Planetary timing cycles (विंशोत्तरी दशा).</li>
-                    <li><b>Ayanamsa</b>: Tropical–sidereal offset (अयनांश).</li>
-                    <li><b>Navagraha</b>: Nine planetary indicators used in Jyotish (नवग्रह).</li>
-                  </ul>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
 
     def render_global_api_controls():
         with st.expander('🔑 API Setup', expanded=st.session_state.get('show_api_form', False)):
@@ -106,11 +80,18 @@ def run_hub():
                     )
                     st.session_state[api_key_state_key] = api_key
 
-                    model_options = st.session_state.get(f'available_{provider_name}', cfg['default_models'])
+                    model_options = list(st.session_state.get(f'available_{provider_name}', cfg['default_models']))
+                    saved_defaults = st.session_state.get(model_state_key, cfg['default_models'][:1])
+
+                    # Prevent StreamlitAPIException: default items must exist in options.
+                    safe_defaults = [m for m in saved_defaults if m in model_options]
+                    if not safe_defaults:
+                        safe_defaults = model_options[:1]
+
                     selected_models = st.multiselect(
                         f'{provider_name} Models',
                         options=model_options,
-                        default=st.session_state.get(model_state_key, cfg['default_models'][:1]),
+                        default=safe_defaults,
                         key=f'global_pick_{model_state_key}',
                     )
                     custom_model = st.text_input(
@@ -152,13 +133,22 @@ def run_hub():
                     st.success('API setup verified. Form will auto-hide.')
                     st.rerun()
 
+    with st.sidebar:
+        st.markdown('### Quick Tools')
+        if st.button('📚', key='glossary_btn', help='Open/close glossary dictionary', use_container_width=True):
+            st.session_state['show_glossary_page'] = not st.session_state.get('show_glossary_page', False)
+
     mode = st.radio('Module', ['Prashna Reading', 'Janma Kundali'], horizontal=True, key='mode')
-    tool1, tool2, _ = st.columns([1, 1, 8])
-    with tool1:
-        render_global_info_popover()
-    with tool2:
+    tool_api, _ = st.columns([1, 9])
+    with tool_api:
         if st.button('🔑', key='api_btn', help='Open/close global API setup', use_container_width=True):
             st.session_state['show_api_form'] = not st.session_state.get('show_api_form', False)
+
+    if st.session_state.get('show_glossary_page', False):
+        st.markdown('### 📚 Glossary Dictionary')
+        st.caption('Hindi/Sanskrit Jyotish terms explained in simple language.')
+        glossary_rows = [{'Word': word, 'Meaning': meaning} for word, meaning in get_glossary_terms()]
+        st.dataframe(glossary_rows, use_container_width=True)
 
     if st.session_state.get('show_api_form', False):
         render_global_api_controls()

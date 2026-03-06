@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 import requests
 import streamlit as st
 
+from janma_requirements import get_minimum_requirements
+
 ZODIAC_SIGNS = [
     'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
     'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'
@@ -210,13 +212,18 @@ def render_janma_kundali_tab(show_page_config: bool = True):
     st.subheader('Janma Kundali analysis — starter module')
     st.caption('Uses sidereal-style approximation with Lahiri ayanamsa estimate and Navagraha longitudes.')
 
+    with st.expander('📋 Minimum Janma Requirements Tracker', expanded=False):
+        st.caption('Starter implementation checklist and roadmap for Swiss-Ephemeris grade engine.')
+        st.dataframe(get_minimum_requirements(), use_container_width=True)
+
+
     selected_providers = st.session_state.get('selected_providers', ['DeepSeek'])
     janma_provider_options = [p for p in selected_providers if p in ['DeepSeek', 'OpenRouter']] or ['DeepSeek', 'OpenRouter']
 
     c1, c2, c3 = st.columns(3)
     with c1:
         name = st.text_input('Name', placeholder='Optional')
-        dob = st.date_input('Birth Date')
+        dob_input = st.text_input('Birth Date (DD/MM/YYYY)', value=datetime.now().strftime('%d/%m/%Y'))
     with c2:
         tob = st.time_input('Birth Time')
         place = st.text_input('Birth Place', placeholder='Delhi')
@@ -231,8 +238,17 @@ def render_janma_kundali_tab(show_page_config: bool = True):
         st.caption('No API key set for this provider. Use the global 🔑 API button above.')
     question = st.text_area('QUESTION WRITING AREA', placeholder='Ask about marriage, career, finance, timing...')
 
+    parsed_dob = None
+    try:
+        parsed_dob = datetime.strptime((dob_input or '').strip(), '%d/%m/%Y').date()
+    except ValueError:
+        st.error('Please enter Birth Date in DD/MM/YYYY format (example: 24/10/1995).')
+
     if st.button('Generate Janma Kundali Analysis'):
-        dt = datetime.fromisoformat(f"{dob.isoformat()}T{tob.strftime('%H:%M')}")
+        if parsed_dob is None:
+            st.stop()
+
+        dt = datetime.fromisoformat(f"{parsed_dob.isoformat()}T{tob.strftime('%H:%M')}")
         jd = to_julian_day(dt)
         ayan = lahiri_ayanamsa_approx(jd)
         planets = sidereal_planets(jd)
