@@ -1,4 +1,3 @@
-import re
 import time
 
 import streamlit as st
@@ -8,7 +7,6 @@ from streamlit_janma_tab import render_janma_kundali_tab
 
 st.set_page_config(page_title='VedicJyotish Hub', page_icon='🕉️', layout='wide')
 
-JANMA_REQUEST_PATTERN = re.compile(r'\b(janma|janam|janma\s+kundali|birth\s+chart|natal)\b', re.IGNORECASE)
 
 if 'mode' not in st.session_state:
     st.session_state['mode'] = 'Prashna Reading'
@@ -20,16 +18,16 @@ st.markdown(
     """
     <style>
       .st-key-info_btn button, .st-key-api_btn button {
-        width: 2.2rem;
-        height: 2.2rem;
-        border-radius: 999px;
-        font-size: 0.9rem;
-        padding: 0;
-        border: 1px solid rgba(148,163,184,.55);
-        background: rgba(15,23,42,.75);
+        width: 100%;
+        min-height: 3rem;
+        border-radius: 12px;
+        font-size: 1.35rem;
+        padding: 0.25rem 0.5rem;
+        border: 1px solid rgba(148,163,184,.65);
+        background: rgba(15,23,42,.78);
       }
       .st-key-info_btn button:hover, .st-key-api_btn button:hover {
-        border-color: rgba(226,232,240,.9);
+        border-color: rgba(226,232,240,.95);
         background: rgba(30,41,59,.95);
       }
       .info-pop {
@@ -38,7 +36,8 @@ st.markdown(
         border-radius: 12px;
         padding: 0.8rem 1rem;
         margin: 0.6rem 0 1rem;
-        max-width: 560px;
+        max-width: none;
+        width: 100%;
         box-shadow: 0 10px 25px rgba(2, 6, 23, .45);
       }
       .info-pop h4 { margin: 0 0 .35rem 0; color: #e2e8f0; }
@@ -50,8 +49,8 @@ st.markdown(
 )
 
 
-def render_global_info():
-    if st.button('ℹ️', key='info_btn', help='Quick glossary for Hindi/Sanskrit words', use_container_width=True):
+def render_global_info_popover():
+    if st.button('ℹ️', key='info_btn', help='Glossary for Sanskrit/Hindi terms', use_container_width=True):
         st.session_state['show_glossary'] = not st.session_state.get('show_glossary', False)
         if st.session_state['show_glossary']:
             st.session_state['glossary_opened_at'] = time.time()
@@ -81,7 +80,7 @@ def render_global_info():
 
 
 def render_global_api_controls():
-    with st.expander('🔑 API', expanded=st.session_state.get('show_api_form', False)):
+    with st.expander('🔑 API Setup', expanded=st.session_state.get('show_api_form', False)):
         st.caption('Global API setup: works for Prashna + Janma pages.')
         selected_providers = st.multiselect(
             'Providers',
@@ -98,10 +97,9 @@ def render_global_api_controls():
 
             with st.container(border=True):
                 st.markdown(f'**{provider_name}**')
-                default_api_key = st.session_state.get(api_key_state_key, '')
                 api_key = st.text_input(
                     f'{provider_name} API Key',
-                    value=default_api_key,
+                    value=st.session_state.get(api_key_state_key, ''),
                     type='password',
                     key=f'global_input_{api_key_state_key}',
                 )
@@ -139,8 +137,7 @@ def render_global_api_controls():
                 st.session_state[model_state_key] = selected_models
                 st.write(f"API key status: {'✅ Added' if api_key.strip() else '❌ Missing'} | Models: {len(selected_models)}")
 
-        verified = st.button('✅ Verify & Hide API Form', use_container_width=True)
-        if verified:
+        if st.button('✅ Verify & Hide API Form', use_container_width=True):
             missing = []
             for provider_name in selected_providers:
                 if not st.session_state.get(f'api_key_{provider_name}', '').strip():
@@ -155,25 +152,16 @@ def render_global_api_controls():
                 st.rerun()
 
 
-header_col, info_col, api_col = st.columns([7, 1, 1])
-with header_col:
-    mode = st.radio('Module', ['Prashna Reading', 'Janma Kundali'], horizontal=True, key='mode')
-with info_col:
-    st.write('')
-    render_global_info()
-with api_col:
-    st.write('')
-    if st.button('🔑', key='api_btn', help='Open/close API setup', use_container_width=True):
+mode = st.radio('Module', ['Prashna Reading', 'Janma Kundali'], horizontal=True, key='mode')
+tool1, tool2, _ = st.columns([1, 1, 8])
+with tool1:
+    render_global_info_popover()
+with tool2:
+    if st.button('🔑', key='api_btn', help='Open/close global API setup', use_container_width=True):
         st.session_state['show_api_form'] = not st.session_state.get('show_api_form', False)
 
 if st.session_state.get('show_api_form', False):
     render_global_api_controls()
-
-intent = st.text_input('What do you want to do?', placeholder='Example: I want Janma Kundali')
-if intent and JANMA_REQUEST_PATTERN.search(intent):
-    st.session_state['mode'] = 'Janma Kundali'
-    mode = 'Janma Kundali'
-    st.success('Switched to Janma Kundali module based on your request.')
 
 if mode == 'Prashna Reading':
     render_prashna_app(show_page_config=False)
