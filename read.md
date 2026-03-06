@@ -5,10 +5,10 @@ If you are not seeing UI updates when running the Streamlit app, use this exact 
 ## 1) Run the correct file
 
 ```bash
-streamlit run streamlit_app.py
+streamlit run streamlit_hub.py
 ```
 
-This repo's Streamlit entry file is `streamlit_app.py` (not `streamlit.py`).
+This repo's Streamlit entry file is `streamlit_hub.py`.
 
 ## 2) Install Streamlit dependencies
 
@@ -52,7 +52,7 @@ The app now returns a friendlier timeout message telling you which provider/mode
 If UI still looks old:
 
 1. Stop the Streamlit process.
-2. Start it again with `streamlit run streamlit_app.py`.
+2. Start it again with `streamlit run streamlit_hub.py`.
 3. In browser, hard refresh (`Ctrl+Shift+R` or `Cmd+Shift+R`).
 4. If needed, open in an incognito window.
 

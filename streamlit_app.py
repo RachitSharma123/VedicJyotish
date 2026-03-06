@@ -436,4 +436,13 @@ def render_prashna_app(show_page_config: bool = True):
 
 
 if __name__ == '__main__':
-    render_prashna_app(show_page_config=True)
+    from streamlit_janma_tab import render_janma_kundali_tab
+
+    st.set_page_config(page_title='VedicJyotish Hub', page_icon='🕉️', layout='wide')
+    st.info('Tip: the main combined app file is `streamlit_hub.py`.')
+    mode = st.radio('Module', ['Prashna Reading', 'Janma Kundali'], horizontal=True)
+
+    if mode == 'Prashna Reading':
+        render_prashna_app(show_page_config=False)
+    else:
+        render_janma_kundali_tab(show_page_config=False)
