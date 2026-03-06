@@ -203,17 +203,11 @@ Return: 1) Overview 2) Marriage 3) Career 4) Finance 5) Conclusion."""
         return f'AI summary error: {exc}'
 
 
-st.set_page_config(page_title='VedicJyotish Tabs', page_icon='🕉️', layout='wide')
-st.title('🕉️ VedicJyotish — Prashna + Janma Kundali')
-
-tab_prashna, tab_birth = st.tabs(['Prashna Reading', 'Janma Kundali (Birth Chart)'])
-
-with tab_prashna:
-    st.info('This tab keeps quick prashna-style flow. For full natal features, use Janma Kundali tab.')
-    st.write('Use your existing `streamlit_app.py` for the current production Prashna workflow.')
-
-with tab_birth:
-    st.subheader('Janma Kundali (Birth Chart) analysis — starter module')
+def render_janma_kundali_tab(show_page_config: bool = True):
+    if show_page_config:
+        st.set_page_config(page_title='VedicJyotish Tabs', page_icon='🕉️', layout='wide')
+    st.title('🕉️ VedicJyotish — Janma Kundali (Birth Chart)')
+    st.subheader('Janma Kundali analysis — starter module')
     st.caption('Uses sidereal-style approximation with Lahiri ayanamsa estimate and Navagraha longitudes.')
 
     c1, c2, c3 = st.columns(3)
@@ -273,3 +267,7 @@ with tab_birth:
             'This Janma Kundali starter combines Navagraha positions, Nakshatra, Panchanga, and current Dasha focus. '
             'For decisions, prioritize repeated themes across Dasha + AI guidance and act on practical remedies first.'
         )
+
+
+if __name__ == '__main__':
+    render_janma_kundali_tab(show_page_config=True)
