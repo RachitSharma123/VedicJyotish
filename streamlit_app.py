@@ -331,9 +331,7 @@ def render_prashna_app(show_page_config: bool = True):
             m5.metric('Asc Longitude', f"{snapshot['asc_deg']}°")
             m6.metric('Moon Longitude', f"{snapshot['moon_deg']}°")
 
-            with st.expander('Technical details', expanded=False):
-                st.json(snapshot)
-                st.info('Houses considered: 5/7/11 support, 6/8/12 obstacles.')
+            st.info('Houses considered: 5/7/11 support, 6/8/12 obstacles.')
 
             jobs = []
             for provider_name in selected_providers:

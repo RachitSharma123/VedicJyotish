@@ -52,8 +52,6 @@ def run_hub():
         unsafe_allow_html=True,
     )
 
-    st.caption('UI Build: streamlit-hub-v3')
-
     def render_global_api_controls():
         with st.expander('🔑 API Setup', expanded=st.session_state.get('show_api_form', False)):
             st.caption('Global API setup: works for Prashna + Janma pages.')
