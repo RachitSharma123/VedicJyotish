@@ -5,10 +5,7 @@ import requests
 import streamlit as st
 import swisseph as swe
 
-from janma_requirements import get_minimum_requirements
 from location_service import local_to_utc, suggest_locations
-
-from janma_requirements import get_minimum_requirements
 
 ZODIAC_SIGNS = [
     'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
@@ -199,18 +196,6 @@ def render_janma_kundali_tab(show_page_config: bool = True):
     st.title('🕉️ VedicJyotish — Janma Kundali (Birth Chart)')
     st.subheader('Janma Kundali analysis — Swiss Ephemeris based starter module')
 
-    with st.expander('📋 Minimum Janma Requirements Tracker', expanded=False):
-        st.caption('Starter checklist/roadmap. Focus-based output is used in final guidance.')
-        st.dataframe(get_minimum_requirements(), use_container_width=True)
-
-    selected_providers = st.session_state.get('selected_providers', ['DeepSeek'])
-    janma_provider_options = [p for p in selected_providers if p in ['DeepSeek', 'OpenRouter']] or ['DeepSeek', 'OpenRouter']
-
-    with st.expander('📋 Minimum Janma Requirements Tracker', expanded=False):
-        st.caption('Starter implementation checklist and roadmap for Swiss-Ephemeris grade engine.')
-        st.dataframe(get_minimum_requirements(), use_container_width=True)
-
-
     selected_providers = st.session_state.get('selected_providers', ['DeepSeek'])
     janma_provider_options = [p for p in selected_providers if p in ['DeepSeek', 'OpenRouter']] or ['DeepSeek', 'OpenRouter']
 
@@ -247,12 +232,6 @@ def render_janma_kundali_tab(show_page_config: bool = True):
         st.caption('No API key set for this provider. Use the global 🔑 API button above.')
 
     question = st.text_area('QUESTION WRITING AREA', placeholder='Ask about career, marriage, health, finance, timing...')
-
-    parsed_dob = None
-    try:
-        parsed_dob = datetime.strptime((dob_input or '').strip(), '%d/%m/%Y').date()
-    except ValueError:
-        st.error('Please enter Birth Date in DD/MM/YYYY format (example: 24/10/1995).')
 
     parsed_dob = None
     try:

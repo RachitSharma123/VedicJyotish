@@ -34,6 +34,23 @@ def run_hub():
             border-color: rgba(226,232,240,.95);
             background: rgba(30,41,59,.95);
           }
+          .st-key-glossary_fab button {
+            position: fixed;
+            left: 1rem;
+            bottom: 1rem;
+            width: 3rem;
+            height: 3rem;
+            border-radius: 999px;
+            font-size: 1.25rem;
+            padding: 0;
+            border: 1px solid rgba(148,163,184,.65);
+            background: rgba(15,23,42,.9);
+            z-index: 1000;
+          }
+          .st-key-glossary_fab button:hover {
+            border-color: rgba(226,232,240,.95);
+            background: rgba(30,41,59,.98);
+          }
           .info-pop {
             border: 1px solid rgba(148,163,184,.45);
             background: rgba(15,23,42,.95);
@@ -131,10 +148,8 @@ def run_hub():
                     st.success('API setup verified. Form will auto-hide.')
                     st.rerun()
 
-    with st.sidebar:
-        st.markdown('### Quick Tools')
-        if st.button('📚', key='glossary_btn', help='Open/close glossary dictionary', use_container_width=True):
-            st.session_state['show_glossary_page'] = not st.session_state.get('show_glossary_page', False)
+    if st.button('📚', key='glossary_fab', help='Open/close glossary dictionary'):
+        st.session_state['show_glossary_page'] = not st.session_state.get('show_glossary_page', False)
 
     mode = st.radio('Module', ['Prashna Reading', 'Janma Kundali'], horizontal=True, key='mode')
     tool_api, _ = st.columns([1, 9])
