@@ -7,7 +7,7 @@ This adds a **new Streamlit file** without modifying existing app files:
 ## Run
 
 ```bash
-streamlit run streamlit.py
+streamlit run streamlit_hub.py
 # then choose "Janma Kundali" module
 ```
 
