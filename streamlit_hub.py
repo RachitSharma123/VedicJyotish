@@ -51,6 +51,24 @@ def run_hub():
             border-color: rgba(226,232,240,.95);
             background: rgba(30,41,59,.98);
           }
+          .st-key-api_fab button {
+            position: fixed;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 3rem;
+            height: 3rem;
+            border-radius: 999px;
+            font-size: 1.25rem;
+            padding: 0;
+            border: 1px solid rgba(148,163,184,.65);
+            background: rgba(15,23,42,.9);
+            z-index: 1000;
+          }
+          .st-key-api_fab button:hover {
+            border-color: rgba(226,232,240,.95);
+            background: rgba(30,41,59,.98);
+          }
           .info-pop {
             border: 1px solid rgba(148,163,184,.45);
             background: rgba(15,23,42,.95);
@@ -152,10 +170,9 @@ def run_hub():
         st.session_state['show_glossary_page'] = not st.session_state.get('show_glossary_page', False)
 
     mode = st.radio('Module', ['Prashna Reading', 'Janma Kundali'], horizontal=True, key='mode')
-    tool_api, _ = st.columns([1, 9])
-    with tool_api:
-        if st.button('🔑', key='api_btn', help='Open/close global API setup', use_container_width=True):
-            st.session_state['show_api_form'] = not st.session_state.get('show_api_form', False)
+
+    if st.button('🔑', key='api_fab', help='Open/close global API setup'):
+        st.session_state['show_api_form'] = not st.session_state.get('show_api_form', False)
 
     if st.session_state.get('show_glossary_page', False):
         st.markdown('### 📚 Glossary Dictionary')

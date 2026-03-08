@@ -204,21 +204,24 @@ def render_janma_kundali_tab(show_page_config: bool = True):
         dob_input = st.text_input('Birth Date (DD/MM/YYYY)', value=datetime.now().strftime('%d/%m/%Y'))
     with c2:
         tob = st.time_input('Birth Time')
-        place_query = st.text_input('Place of Birth', placeholder='Type city/place name')
-        if st.button('Suggest Locations', key='suggest_location_btn'):
-            st.session_state['location_suggestions'] = suggest_locations(place_query)
+        place_query = st.text_input('Place of Birth', placeholder='Type at least 4 letters for suggestions')
+
+        if len((place_query or '').strip()) >= 4 and st.session_state.get('location_last_query') != place_query.strip():
+            try:
+                st.session_state['location_suggestions'] = suggest_locations(place_query)
+                st.session_state['location_last_query'] = place_query.strip()
+            except Exception as loc_err:
+                st.warning(f'Location suggestion failed: {loc_err}')
 
         suggestions = st.session_state.get('location_suggestions', [])
         selected_label = st.selectbox('Suggested Locations', ['Select...'] + [s['label'] for s in suggestions], key='location_pick')
         selected = next((s for s in suggestions if s['label'] == selected_label), None)
 
-        lat_default = float(selected['lat']) if selected else 28.6139
-        lon_default = float(selected['lon']) if selected else 77.2090
-        tz_default = str(selected['timezone']) if selected else 'Asia/Kolkata'
-
-        lat = st.number_input('Latitude', value=lat_default, format='%.6f')
-        lon = st.number_input('Longitude', value=lon_default, format='%.6f')
-        tz_name = st.text_input('Timezone', value=tz_default, help='IANA timezone, e.g., Asia/Kolkata, Australia/Melbourne')
+        lat = float(selected['lat']) if selected else 28.6139
+        lon = float(selected['lon']) if selected else 77.2090
+        tz_name = str(selected['timezone']) if selected else 'Asia/Kolkata'
+        if selected:
+            st.caption(f"Using: {lat:.4f}, {lon:.4f} • {tz_name}")
 
     with c3:
         provider = st.selectbox('AI Provider', janma_provider_options)
