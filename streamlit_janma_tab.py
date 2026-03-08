@@ -123,7 +123,7 @@ def build_life_focus(dasha: dict[str, str]) -> dict[str, str]:
     return {'Primary Focus': area, 'Guidance': note}
 
 
-def ai_summary(question: str, planets: dict[str, float], dasha: dict[str, str], provider: str, model: str, api_key: str) -> str:
+def call_ai_chat(messages: list[dict[str, str]], provider: str, model: str, api_key: str) -> str:
     cfg = {
         'DeepSeek': ('https://api.deepseek.com/chat/completions', 'DEEPSEEK_API_KEY'),
         'OpenRouter': ('https://openrouter.ai/api/v1/chat/completions', 'OPENROUTER_API_KEY'),
@@ -136,12 +136,6 @@ def ai_summary(question: str, planets: dict[str, float], dasha: dict[str, str], 
     if not api_key:
         return f'AI summary skipped: missing API key for {provider}.'
 
-    prompt = f"""You are a Vedic Jyotish assistant. Use focus-based practical guidance.
-Question: {question or 'General life direction'}
-Sidereal planetary longitudes: {planets}
-Current dasha snapshot: {dasha}
-Return: 1) Overview 2) Marriage 3) Career 4) Finance 5) Health 6) Conclusion."""
-
     headers = {'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}
     if provider == 'OpenRouter':
         headers['HTTP-Referer'] = 'http://localhost'
@@ -153,10 +147,7 @@ Return: 1) Overview 2) Marriage 3) Career 4) Finance 5) Health 6) Conclusion."""
             headers=headers,
             json={
                 'model': model,
-                'messages': [
-                    {'role': 'system', 'content': 'You are an expert Vedic astrology assistant.'},
-                    {'role': 'user', 'content': prompt},
-                ],
+                'messages': messages,
                 'temperature': 0.4,
             },
             timeout=45,
@@ -168,6 +159,14 @@ Return: 1) Overview 2) Marriage 3) Career 4) Finance 5) Health 6) Conclusion."""
         return f'{provider} timeout for model {model}. Please retry or switch model.'
     except Exception as exc:
         return f'AI summary error: {exc}'
+
+
+def build_initial_ai_prompt(question: str, planets: dict[str, float], dasha: dict[str, str]) -> str:
+    return f"""You are a Vedic Jyotish assistant. Use focus-based practical guidance.
+Question: {question or 'General life direction'}
+Sidereal planetary longitudes: {planets}
+Current dasha snapshot: {dasha}
+Return: 1) Overview 2) Marriage 3) Career 4) Finance 5) Health 6) Conclusion."""
 
 
 def swiss_sidereal_chart(dt_utc: datetime, lat: float, lon: float) -> tuple[dict[str, float], float, float]:
@@ -282,7 +281,40 @@ def render_janma_kundali_tab(show_page_config: bool = True):
             st.write(f'- {y}')
 
         st.markdown('### AI Summary (Focus-Aware)')
-        st.markdown(ai_summary(question, planets, dasha, provider, model, api_key))
+        base_messages = [
+            {'role': 'system', 'content': 'You are an expert Vedic astrology assistant.'},
+            {'role': 'user', 'content': build_initial_ai_prompt(question, planets, dasha)},
+        ]
+        ai_text = call_ai_chat(base_messages, provider, model, api_key)
+
+        st.session_state['janma_ai_provider'] = provider
+        st.session_state['janma_ai_model'] = model
+        st.session_state['janma_ai_api_key'] = api_key
+        st.session_state['janma_chat_messages'] = base_messages + [{'role': 'assistant', 'content': ai_text}]
+        st.session_state['janma_ai_response'] = ai_text
+
+        st.markdown(f"{ai_text.strip()}\n\n<sub>✨</sub>", unsafe_allow_html=True)
+
+    if st.session_state.get('janma_chat_messages'):
+        st.markdown('### Follow-up')
+        followup_q = st.text_input('Ask follow-up on the same reading', key='janma_followup_input', placeholder='Example: Can you explain marriage timing in simple steps?')
+        if st.button('Follow-up', key='janma_followup_btn'):
+            if (followup_q or '').strip():
+                history = st.session_state.get('janma_chat_messages', [])
+                history = history + [{'role': 'user', 'content': followup_q.strip()}]
+                followup_text = call_ai_chat(
+                    history,
+                    st.session_state.get('janma_ai_provider', provider),
+                    st.session_state.get('janma_ai_model', model),
+                    st.session_state.get('janma_ai_api_key', api_key),
+                )
+                history = history + [{'role': 'assistant', 'content': followup_text}]
+                st.session_state['janma_chat_messages'] = history
+                st.session_state['janma_ai_response'] = followup_text
+
+        if st.session_state.get('janma_ai_response'):
+            st.markdown('#### Latest Follow-up Response')
+            st.markdown(f"{st.session_state['janma_ai_response'].strip()}\n\n<sub>✨</sub>", unsafe_allow_html=True)
 
 
 if __name__ == '__main__':
