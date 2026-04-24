@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ApiError, fetchJson } from './lib/fetch-json';
@@ -101,27 +101,62 @@ export default function Page() {
     setShowErrors(false);
     setLoading(true);
     setError('');
+    setResult('');
+    setPrashna(null);
+
     try {
-      const data = await fetchJson<BirthChartResponse>(
-        '/api/birth-chart',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name,
-            birthDate,
-            birthTime,
-            birthPlace,
-            direction,
-            question,
-            provider: 'nvidia',
-            model,
-          }),
-        },
-        { retries: 0, timeoutMs: 55000 }
-      );
-      setResult(data.interpretation);
-      setPrashna(data.prashna);
+      const res = await fetch('/api/birth-chart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, birthDate, birthTime, birthPlace, direction, question, provider: 'nvidia', model }),
+      });
+
+      const requestId = res.headers.get('x-request-id') ?? '';
+
+      if (!res.ok || !res.body) {
+        const json = await res.json().catch(() => ({}));
+        const msg = (json as { message?: string }).message || `Request failed (${res.status})`;
+        throw new ApiError(msg, res.status, requestId);
+      }
+
+      const contentType = res.headers.get('content-type') ?? '';
+      if (!contentType.includes('text/event-stream')) {
+        const json = await res.json();
+        setResult((json as BirthChartResponse).interpretation);
+        setPrashna((json as BirthChartResponse).prashna);
+        return;
+      }
+
+      // SSE stream
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let buf = '';
+      let full = '';
+      let streamStarted = false;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const events = buf.split('\n\n');
+        buf = events.pop() ?? '';
+
+        for (const block of events) {
+          const lines = block.split('\n');
+          const eventType = lines.find(l => l.startsWith('event:'))?.slice(6).trim();
+          const dataLine = lines.find(l => l.startsWith('data:'))?.slice(5).trim();
+          if (!dataLine) continue;
+
+          if (eventType === 'prashna') {
+            try { setPrashna(JSON.parse(dataLine)); } catch { /* skip */ }
+          } else if (eventType === 'chunk') {
+            if (!streamStarted) { setLoading(false); streamStarted = true; }
+            try { full += JSON.parse(dataLine); setResult(full); } catch { /* skip */ }
+          } else if (eventType === 'error') {
+            throw new ApiError(JSON.parse(dataLine), 500, requestId);
+          }
+        }
+      }
     } catch (err) {
       setError(
         err instanceof ApiError

@@ -45,7 +45,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const provider: AIProvider = payload.provider && payload.provider in PROVIDERS ? payload.provider : 'deepseek';
+    const provider: AIProvider = payload.provider && payload.provider in PROVIDERS ? payload.provider : 'nvidia';
     const config = PROVIDERS[provider];
 
     const prashna = generatePrashnaSnapshot({
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
         {
           ok: false,
           code: 'MISSING_API_KEY',
-          message: `${config.label} API key is missing. Add it in UI or server env ${config.keyEnv}.`,
+          message: `${config.label} API key is missing. Add ${config.keyEnv} to server env.`,
         },
         400,
         requestId
@@ -128,72 +128,89 @@ Keep it insightful, compassionate, and concise.`;
       headers['X-Title'] = 'VedicJyotish';
     }
 
-    const upstreamAbort = new AbortController();
-    const upstreamTimeout = setTimeout(() => upstreamAbort.abort(), 50000);
+    const upstream = await fetch(config.chatUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: 'You are an expert Vedic astrology assistant.' },
+          { role: 'user', content: prompt },
+        ],
+        temperature: 0.5,
+        stream: true,
+        max_tokens: 1200,
+      }),
+    });
 
-    let upstream: Response;
-    try {
-      upstream = await fetch(config.chatUrl, {
-        method: 'POST',
-        headers,
-        signal: upstreamAbort.signal,
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: 'system', content: 'You are an expert Vedic astrology assistant.' },
-            { role: 'user', content: prompt },
-          ],
-          temperature: 0.5,
-          stream: false,
-          max_tokens: 1200,
-        }),
-      });
-    } finally {
-      clearTimeout(upstreamTimeout);
-    }
-
-    const contentType = upstream.headers.get('content-type') ?? '';
-    if (!contentType.toLowerCase().includes('application/json')) {
+    if (!upstream.ok) {
+      const contentType = upstream.headers.get('content-type') ?? '';
+      if (contentType.includes('application/json')) {
+        const data = await upstream.json();
+        return jsonResponse(
+          { ok: false, code: 'UPSTREAM_ERROR', message: data?.error?.message || `${config.label} request failed.` },
+          upstream.status >= 500 ? 502 : 400,
+          requestId
+        );
+      }
       const raw = await upstream.text();
-      console.error(`[${requestId}] ${config.label} non-JSON response (${upstream.status}):`, raw.slice(0, 500));
       return jsonResponse(
-        {
-          ok: false,
-          code: 'UPSTREAM_BAD_GATEWAY',
-          message: `${config.label} returned a non-JSON response (status ${upstream.status}). Raw: ${raw.slice(0, 200)}`,
-        },
+        { ok: false, code: 'UPSTREAM_ERROR', message: `${config.label} error (${upstream.status}): ${raw.slice(0, 200)}` },
         502,
         requestId
       );
     }
 
-    const data = await upstream.json();
+    const enc = new TextEncoder();
+    const dec = new TextDecoder();
 
-    if (!upstream.ok) {
-      return jsonResponse(
-        {
-          ok: false,
-          code: 'UPSTREAM_ERROR',
-          message: data?.error?.message || data?.message || `${config.label} request failed.`,
-        },
-        upstream.status >= 500 ? 502 : 400,
-        requestId
-      );
-    }
+    const stream = new ReadableStream({
+      async start(controller) {
+        // First event: send prashna snapshot
+        controller.enqueue(enc.encode(`event: prashna\ndata: ${JSON.stringify(prashna)}\n\n`));
 
-    const interpretation = data?.choices?.[0]?.message?.content ?? 'No interpretation returned.';
-    return jsonResponse({ ok: true, interpretation, prashna }, 200, requestId);
-  } catch (err) {
-    const isTimeout = err instanceof Error && err.name === 'AbortError';
-    return jsonResponse(
-      {
-        ok: false,
-        code: isTimeout ? 'UPSTREAM_TIMEOUT' : 'INTERNAL_ERROR',
-        message: isTimeout
-          ? 'The AI model took too long to respond. Try a shorter question or retry.'
-          : 'An unexpected server error occurred.',
+        const reader = upstream.body!.getReader();
+        let buf = '';
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buf += dec.decode(value, { stream: true });
+            const lines = buf.split('\n');
+            buf = lines.pop() ?? '';
+
+            for (const line of lines) {
+              if (!line.startsWith('data: ')) continue;
+              const raw = line.slice(6).trim();
+              if (raw === '[DONE]') { controller.close(); return; }
+              try {
+                const json = JSON.parse(raw);
+                const content = json.choices?.[0]?.delta?.content;
+                if (content) {
+                  controller.enqueue(enc.encode(`event: chunk\ndata: ${JSON.stringify(content)}\n\n`));
+                }
+              } catch { /* skip malformed chunks */ }
+            }
+          }
+        } catch {
+          controller.enqueue(enc.encode(`event: error\ndata: ${JSON.stringify('Stream interrupted')}\n\n`));
+        }
+        controller.close();
       },
-      isTimeout ? 504 : 500,
+    });
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'x-request-id': requestId,
+      },
+    });
+  } catch {
+    return jsonResponse(
+      { ok: false, code: 'INTERNAL_ERROR', message: 'An unexpected server error occurred.' },
+      500,
       requestId
     );
   }
