@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import { generatePrashnaSnapshot } from '../../lib/astrology';
 import { type AIProvider, PROVIDERS } from '../../lib/providers';
 
+export const maxDuration = 60;
+
 type BirthChartRequest = {
   name: string;
   birthDate: string;
@@ -126,20 +128,29 @@ Keep it insightful, compassionate, and concise.`;
       headers['X-Title'] = 'VedicJyotish';
     }
 
-    const upstream = await fetch(config.chatUrl, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: 'system', content: 'You are an expert Vedic astrology assistant.' },
-          { role: 'user', content: prompt },
-        ],
-        temperature: 0.5,
-        stream: false,
-        max_tokens: 2048,
-      }),
-    });
+    const upstreamAbort = new AbortController();
+    const upstreamTimeout = setTimeout(() => upstreamAbort.abort(), 50000);
+
+    let upstream: Response;
+    try {
+      upstream = await fetch(config.chatUrl, {
+        method: 'POST',
+        headers,
+        signal: upstreamAbort.signal,
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: 'You are an expert Vedic astrology assistant.' },
+            { role: 'user', content: prompt },
+          ],
+          temperature: 0.5,
+          stream: false,
+          max_tokens: 1200,
+        }),
+      });
+    } finally {
+      clearTimeout(upstreamTimeout);
+    }
 
     const contentType = upstream.headers.get('content-type') ?? '';
     if (!contentType.toLowerCase().includes('application/json')) {
@@ -172,14 +183,17 @@ Keep it insightful, compassionate, and concise.`;
 
     const interpretation = data?.choices?.[0]?.message?.content ?? 'No interpretation returned.';
     return jsonResponse({ ok: true, interpretation, prashna }, 200, requestId);
-  } catch {
+  } catch (err) {
+    const isTimeout = err instanceof Error && err.name === 'AbortError';
     return jsonResponse(
       {
         ok: false,
-        code: 'INTERNAL_ERROR',
-        message: 'An unexpected server error occurred.',
+        code: isTimeout ? 'UPSTREAM_TIMEOUT' : 'INTERNAL_ERROR',
+        message: isTimeout
+          ? 'The AI model took too long to respond. Try a shorter question or retry.'
+          : 'An unexpected server error occurred.',
       },
-      500,
+      isTimeout ? 504 : 500,
       requestId
     );
   }

@@ -88,6 +88,8 @@ export default function Page() {
     window.localStorage.setItem('theme', isDark ? 'dark' : 'light');
   }, [isDark]);
 
+  const [showErrors, setShowErrors] = useState(false);
+
   const canSubmit = useMemo(
     () => !!birthDate && !!birthTime && !!birthPlace && !!question.trim(),
     [birthDate, birthTime, birthPlace, question]
@@ -95,6 +97,8 @@ export default function Page() {
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
+    if (!canSubmit) { setShowErrors(true); return; }
+    setShowErrors(false);
     setLoading(true);
     setError('');
     try {
@@ -114,7 +118,7 @@ export default function Page() {
             model,
           }),
         },
-        { retries: 1, timeoutMs: 55000 }
+        { retries: 0, timeoutMs: 55000 }
       );
       setResult(data.interpretation);
       setPrashna(data.prashna);
@@ -217,21 +221,25 @@ export default function Page() {
             <motion.div className="row" variants={fadeUp}>
               <label style={{ flex: 1 }}>
                 <span className="label-icon"><Calendar size={13} /> Date of Query</span>
-                <input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
+                <input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} className={showErrors && !birthDate ? 'field-error' : ''} />
               </label>
               <label style={{ flex: 1 }}>
                 <span className="label-icon"><Clock size={13} /> Time</span>
-                <input type="time" value={birthTime} onChange={(e) => setBirthTime(e.target.value)} />
+                <input type="time" value={birthTime} onChange={(e) => setBirthTime(e.target.value)} className={showErrors && !birthTime ? 'field-error' : ''} />
               </label>
             </motion.div>
 
             <motion.label variants={fadeUp}>
-              <span className="label-icon"><MapPin size={13} /> Place of Query</span>
+              <span className="label-icon">
+                <MapPin size={13} /> Place of Query
+                {showErrors && !birthPlace && <span className="field-hint">Required</span>}
+              </span>
               <input
                 value={birthPlace}
                 onChange={(e) => setBirthPlace(e.target.value)}
                 placeholder="City, Country"
                 autoComplete="off"
+                className={showErrors && !birthPlace ? 'field-error' : ''}
               />
             </motion.label>
 
@@ -245,19 +253,23 @@ export default function Page() {
             </motion.label>
 
             <motion.label variants={fadeUp}>
-              <span className="label-icon"><MessageCircle size={13} /> Prashna — Speak Your Question</span>
+              <span className="label-icon">
+                <MessageCircle size={13} /> Prashna — Speak Your Question
+                {showErrors && !question.trim() && <span className="field-hint">Required</span>}
+              </span>
               <textarea
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
                 placeholder="Speak your query to the cosmos… e.g. Will this path lead to prosperity?"
                 rows={3}
+                className={showErrors && !question.trim() ? 'field-error' : ''}
               />
             </motion.label>
 
             <motion.button
               className="btn"
               type="submit"
-              disabled={!canSubmit || loading}
+              disabled={loading}
               variants={fadeUp}
               whileHover={canSubmit && !loading ? { scale: 1.02, y: -2 } : {}}
               whileTap={canSubmit && !loading ? { scale: 0.97 } : {}}
