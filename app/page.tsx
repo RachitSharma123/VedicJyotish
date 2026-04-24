@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ApiError, fetchJson } from './lib/fetch-json';
@@ -45,131 +45,20 @@ const PLANET_SYMBOLS: Record<string, string> = {
 };
 
 function SpaceBackground() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const resize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-    resize();
-    window.addEventListener('resize', resize);
-
-    // Stars
-    const stars = Array.from({ length: 380 }, () => ({
-      x: Math.random(), y: Math.random(),
-      r: 0.15 + Math.random() * 1.8,
-      phase: Math.random() * Math.PI * 2,
-      speed: 0.002 + Math.random() * 0.007,
-      gold: Math.random() > 0.72,
-      blue: Math.random() > 0.85,
-    }));
-
-    // Shooting stars
-    type Shooter = { x: number; y: number; vx: number; vy: number; len: number; alpha: number; life: number; maxLife: number };
-    const shooters: Shooter[] = [];
-    let nextShooter = 0;
-
-    // Nebula clouds (static positions, animated opacity)
-    const nebulas = [
-      { x: 0.15, y: 0.25, rx: 0.22, ry: 0.18, r: 80, g: 40, b: 160, a: 0.06 },
-      { x: 0.80, y: 0.65, rx: 0.28, ry: 0.20, r: 160, g: 60, b: 220, a: 0.05 },
-      { x: 0.50, y: 0.10, rx: 0.35, ry: 0.15, r: 220, g: 130, b: 30,  a: 0.04 },
-      { x: 0.30, y: 0.80, rx: 0.20, ry: 0.22, r: 30,  g: 80,  b: 200, a: 0.04 },
-      { x: 0.90, y: 0.20, rx: 0.18, ry: 0.14, r: 200, g: 80,  b: 40,  a: 0.04 },
-    ];
-
-    let animId: number;
-    function draw() {
-      const W = canvas!.width, H = canvas!.height;
-      const now = performance.now() * 0.001;
-
-      ctx!.clearRect(0, 0, W, H);
-
-      // Nebula clouds
-      nebulas.forEach((n) => {
-        const pulse = 0.7 + 0.3 * Math.sin(now * 0.2 + n.x * 5);
-        const grd = ctx!.createRadialGradient(n.x * W, n.y * H, 0, n.x * W, n.y * H, Math.max(n.rx * W, n.ry * H));
-        grd.addColorStop(0, `rgba(${n.r},${n.g},${n.b},${(n.a * pulse).toFixed(3)})`);
-        grd.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx!.beginPath();
-        ctx!.ellipse(n.x * W, n.y * H, n.rx * W, n.ry * H, 0, 0, Math.PI * 2);
-        ctx!.fillStyle = grd;
-        ctx!.fill();
-      });
-
-      // Galaxy core glow center
-      const cx = W * 0.5, cy = H * 0.42;
-      const core = ctx!.createRadialGradient(cx, cy, 0, cx, cy, W * 0.18);
-      const coreAlpha = (0.04 + 0.02 * Math.sin(now * 0.15)).toFixed(3);
-      core.addColorStop(0, `rgba(240,180,41,${coreAlpha})`);
-      core.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx!.fillStyle = core;
-      ctx!.fillRect(0, 0, W, H);
-
-      // Stars
-      stars.forEach((s) => {
-        const alpha = (Math.sin(s.phase + now * s.speed * 6) + 1) / 2;
-        ctx!.beginPath();
-        ctx!.arc(s.x * W, s.y * H, s.r, 0, Math.PI * 2);
-        const a = (alpha * 0.9).toFixed(2);
-        ctx!.fillStyle = s.gold
-          ? `rgba(240,180,41,${a})`
-          : s.blue
-          ? `rgba(150,180,255,${a})`
-          : `rgba(210,220,255,${(alpha * 0.7).toFixed(2)})`;
-        ctx!.fill();
-      });
-
-      // Shooting stars
-      if (now > nextShooter) {
-        shooters.push({
-          x: Math.random() * W * 0.8,
-          y: Math.random() * H * 0.5,
-          vx: 4 + Math.random() * 6,
-          vy: 1 + Math.random() * 3,
-          len: 80 + Math.random() * 120,
-          alpha: 1,
-          life: 0,
-          maxLife: 0.6 + Math.random() * 0.4,
-        });
-        nextShooter = now + 3 + Math.random() * 5;
-      }
-      for (let i = shooters.length - 1; i >= 0; i--) {
-        const s = shooters[i];
-        s.life += 0.016;
-        s.x += s.vx;
-        s.y += s.vy;
-        const t = s.life / s.maxLife;
-        s.alpha = t < 0.3 ? t / 0.3 : 1 - (t - 0.3) / 0.7;
-        if (s.life >= s.maxLife) { shooters.splice(i, 1); continue; }
-        const grad = ctx!.createLinearGradient(s.x, s.y, s.x - s.len, s.y - s.len * 0.4);
-        grad.addColorStop(0, `rgba(255,255,255,${s.alpha.toFixed(2)})`);
-        grad.addColorStop(1, 'rgba(255,255,255,0)');
-        ctx!.beginPath();
-        ctx!.moveTo(s.x, s.y);
-        ctx!.lineTo(s.x - s.len, s.y - s.len * 0.4);
-        ctx!.strokeStyle = grad;
-        ctx!.lineWidth = 1.2;
-        ctx!.stroke();
-      }
-
-      animId = requestAnimationFrame(draw);
-    }
-    draw();
-
-    return () => {
-      cancelAnimationFrame(animId);
-      window.removeEventListener('resize', resize);
-    };
-  }, []);
-
-  return <canvas ref={canvasRef} className="star-field" aria-hidden="true" />;
+  return (
+    <video
+      className="star-field"
+      autoPlay
+      muted
+      loop
+      playsInline
+      aria-hidden="true"
+      poster="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=="
+    >
+      <source src="https://videos.pexels.com/video-files/36735105/15568067_1920_1080_30fps.mp4" type="video/mp4" />
+      <source src="https://videos.pexels.com/video-files/34248009/14512643_1920_1080_24fps.mp4" type="video/mp4" />
+    </video>
+  );
 }
 
 export default function Page() {
@@ -225,7 +114,7 @@ export default function Page() {
             model,
           }),
         },
-        { retries: 2, timeoutMs: 20000 }
+        { retries: 1, timeoutMs: 55000 }
       );
       setResult(data.interpretation);
       setPrashna(data.prashna);
