@@ -1,4 +1,4 @@
-export type AIProvider = 'deepseek' | 'openrouter' | 'zai' | 'kimi';
+export type AIProvider = 'deepseek' | 'openrouter' | 'zai' | 'kimi' | 'nvidia';
 
 export type ProviderConfig = {
   label: string;
@@ -10,6 +10,13 @@ export type ProviderConfig = {
 };
 
 export const PROVIDERS: Record<AIProvider, ProviderConfig> = {
+  nvidia: {
+    label: 'NVIDIA NIM',
+    modelsUrl: 'https://integrate.api.nvidia.com/v1/models',
+    chatUrl: 'https://integrate.api.nvidia.com/v1/chat/completions',
+    keyEnv: 'NVIDIA_API_KEY',
+    defaultModel: 'mistralai/mistral-large-3-675b-instruct-2512',
+  },
   deepseek: {
     label: 'DeepSeek',
     modelsUrl: 'https://api.deepseek.com/models',

@@ -1,73 +1,88 @@
-# VedicJyotish
+# Prashna Oracle ✦
 
-A minimal Next.js app that generates a Vedic birth-chart style summary through a server-side DeepSeek proxy route.
+**AI-powered Vedic astrology engine for Prashna Kundali readings.**
+
+Ask any question. The oracle calculates your Lagna, Moon sign, and all 9 Navagrahas using sidereal Lahiri ayanamsha — then delivers a full Jyotish interpretation powered by Mistral Large 675B via NVIDIA NIM.
+
+---
+
+## Features
+
+- **Prashna Kundali** — Ascendant + Moon computed from the exact moment of your question
+- **Full 9-Graha Ephemeris** — Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu with nakshatra + pada
+- **AI Interpretation** — Mistral Large 3 (675B) via NVIDIA NIM
+- **No API key required from the user** — server-side key injection
+- **Space canvas background** — nebula clouds, 380 stars, shooting stars, galaxy core glow
+- **Liquid Glass UI** — framer-motion animations, ambient blobs, spring physics
+- **Viewport-locked layout** — no page scroll, panels scroll internally
+- **Dark/Light mode**
+
+---
+
+## Stack
+
+- **Next.js 16** (App Router)
+- **Framer Motion** — animations
+- **Lucide React** — icons
+- **Tailwind CSS v4** + shadcn/ui components
+- **NVIDIA NIM** — LLM inference
+
+---
 
 ## Setup
 
-1. Copy env file and set your key:
-   - `cp .env.example .env.local`
-   - set `DEEPSEEK_API_KEY` in `.env.local`
-2. Run dev server: `npm run dev`
-3. Open `http://localhost:3000`
+```bash
+npm install
+```
 
-## Improvements implemented
+Create `.env.local`:
 
-- Robust API JSON handling to avoid parsing HTML error pages as JSON.
-- Retry + timeout behavior in client fetch helper.
-- Server route that always returns JSON and exposes `x-request-id` for debugging.
-- Dark mode toggle with persisted preference.
+```env
+NVIDIA_API_KEY=your_nvidia_nim_key
+```
 
-## Notes
+Get your key at [build.nvidia.com](https://build.nvidia.com/models).
 
-- Do **not** hardcode API keys in source.
-- Use `DEEPSEEK_MODEL` to switch to the latest model available in your DeepSeek account.
+Run:
 
+```bash
+npm run dev
+# open http://localhost:3000
+```
 
-## Streamlit option
+---
 
-You can also run a Streamlit version of the same prashna workflow:
+## Available Models (NVIDIA NIM)
 
-1. `python -m venv .venv && source .venv/bin/activate`
-2. `pip install -r requirements-streamlit.txt`
-3. `export DEEPSEEK_API_KEY=...`
-4. `streamlit run streamlit_app.py`
+Swap model in `app/page.tsx` and `app/lib/providers.ts`:
 
-This includes time/date/location/direction capture, lagna + moon approximation, and DeepSeek reading generation.
+| Model | Params | Notes |
+|---|---|---|
+| `mistralai/mistral-large-3-675b-instruct-2512` | 675B | Default — best quality |
+| `meta/llama-3.1-405b-instruct` | 405B | Fast + capable |
+| `minimaxai/minimax-m2.7` | ~456B MoE | Multilingual |
+| `qwen/qwen3.5-122b-a10b` | 122B MoE | Fast |
+| `nvidia/llama-3.3-nemotron-super-49b-v1` | 49B | Lightweight |
 
+---
 
-## Provider support
+## API
 
-The UI now accepts API keys per session and supports provider/model selection for:
-- DeepSeek
-- OpenRouter
-- Z.ai (Zhipu)
-- Kimi (Moonshot)
+`POST /api/birth-chart`
 
-Use **Fetch Models** to pull live model IDs from provider APIs.
+```json
+{
+  "birthDate": "2026-04-24",
+  "birthTime": "18:59",
+  "birthPlace": "Melbourne, Australia",
+  "question": "Will my nephew recover?",
+  "name": "Optional",
+  "direction": "North"
+}
+```
 
+---
 
-## Avoiding merge conflicts on generated files
+## License
 
-If you were repeatedly seeing merge conflicts and not seeing latest changes clearly, the common culprit was `next-env.d.ts` churn between dev/build runs.
-
-This repo now configures a merge strategy for that generated file in `.gitattributes` so normal branch merges are smoother.
-
-Recommended workflow:
-1. `git fetch origin`
-2. `git pull --rebase`
-3. If you still have local generated-file noise: `git checkout -- next-env.d.ts`
-4. Re-run: `npm run dev`
-
-
-## UI visibility checklist
-
-If you think UI changes are missing, verify you can see these items at the top of the page:
-- `API Provider Section` pill
-- `Question Area` pill
-- `Theme Toggle` pill
-- `UI: prashna-ui-v2` badge
-
-Then run:
-1. `rm -rf .next`
-2. `npm run dev`
-3. hard refresh browser (`Ctrl/Cmd + Shift + R`)
+MIT

@@ -69,15 +69,20 @@ export async function POST(req: Request) {
       );
     }
 
+    const ephemerisLines = prashna.ephemerisChart
+      .map(r => `  ${r.symbol} ${r.planet.padEnd(8)} ${r.sign.padEnd(13)} ${r.degInSign.toFixed(2).padStart(6)}°  ${r.nakshatra.padEnd(18)} pada ${r.pada}${r.retrograde ? '  (R)' : ''}`)
+      .join('\n');
+
     const prompt = `You are a Jyotish Prashna astrologer. Capture the soul of astrology with clear structured reasoning.
 
 Rule flow to follow strictly:
 1) Note Time, Date, Location, Direction faced (if given).
 2) Determine Lagna from the event moment.
 3) Judge Moon for emotional truth and urgency.
-4) Evaluate houses: 5/7/11 for love success and 6/8/12 for obstacles.
-5) Give significators-style read: support vs delay signals.
-6) Give practical timing window and next actions.
+4) Analyse all 9 grahas from the ephemeris chart below — note sign, nakshatra, and retrograde status.
+5) Evaluate houses: 5/7/11 for love success and 6/8/12 for obstacles.
+6) Give significators-style read: support vs delay signals.
+7) Give practical timing window and next actions.
 
 Input:
 - Name: ${payload.name || 'Unknown'}
@@ -87,16 +92,19 @@ Input:
 - Direction: ${payload.direction || 'Not provided'}
 - Question: ${payload.question}
 
-Calculated prashna snapshot (ephemeris-style approximation):
+Prashna snapshot (sidereal / Lahiri ayanamsha):
 - Lagna sign: ${prashna.lagnaSign}
 - Lagna lord: ${prashna.lagnaLord}
 - Moon sign: ${prashna.moonSign}
 - Local sidereal time: ${prashna.localSiderealTime}
-- Ascendant longitude: ${prashna.rawAscendantDegrees}
-- Moon longitude: ${prashna.rawMoonDegrees}
+- Ascendant longitude: ${prashna.rawAscendantDegrees}°
 - Relevant houses: ${prashna.relevanceHouses.join(', ')}
 - Obstacle houses: ${prashna.obstacleHouses.join(', ')}
-- Method note: ${prashna.calculationNote}
+
+Ephemeris Chart (all 9 grahas):
+${ephemerisLines}
+
+Method note: ${prashna.calculationNote}
 
 Output format:
 - Prashna Snapshot
@@ -128,17 +136,20 @@ Keep it insightful, compassionate, and concise.`;
           { role: 'user', content: prompt },
         ],
         temperature: 0.5,
+        stream: false,
+        max_tokens: 2048,
       }),
     });
 
     const contentType = upstream.headers.get('content-type') ?? '';
     if (!contentType.toLowerCase().includes('application/json')) {
       const raw = await upstream.text();
+      console.error(`[${requestId}] ${config.label} non-JSON response (${upstream.status}):`, raw.slice(0, 500));
       return jsonResponse(
         {
           ok: false,
           code: 'UPSTREAM_BAD_GATEWAY',
-          message: `${config.label} returned a non-JSON response. Please retry.`,
+          message: `${config.label} returned a non-JSON response (status ${upstream.status}). Raw: ${raw.slice(0, 200)}`,
         },
         502,
         requestId
